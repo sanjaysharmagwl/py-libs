@@ -1,0 +1,34 @@
+[project]
+name = "pylibs-calc"
+version = "0.1.0"
+description = "Embeddable what-if calculation engine on Polars: filters, overrides, shocks, derived columns, group-by, rollup, pivot and scenarios."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "Sanjay Sharma", email = "sanjaysharmagwl@gmail.com" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Typing :: Typed",
+]
+dependencies = [
+    # Stable Decimal landed in 1.35; the floor is the oldest release the test suite runs on.
+    # Polars 2.0 is in release candidates, so stay below it until it is tested.
+    "polars>=1.44,<2",
+    "pydantic>=2.7",
+    "typing-extensions>=4.7",
+]
+
+[project.optional-dependencies]
+fastapi = ["fastapi>=0.115"]
+redis = ["redis>=5"]
+
+[project.urls]
+Repository = "https://github.com/sanjaysharmagwl/py-libs"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pylibs_calc"]

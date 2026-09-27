@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pylibs-calc demo</title>
+  <!-- AG Grid's server-side row model is an Enterprise feature; without a licence key the grid
+       shows a watermark, which is fine for evaluation. -->
+  <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise@36.2.0/dist/ag-grid-enterprise.min.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 12px 16px; background: #fff; color: #1b1f24; }
+    header { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+    header h1 { font-size: 16px; margin: 0 12px 0 0; }
+    button { padding: 6px 10px; border: 1px solid #c8ccd1; border-radius: 6px; background: #f6f8fa; cursor: pointer; }
+    #status { font-size: 13px; color: #57606a; }
+    #error { color: #b42318; font-size: 13px; }
+    #grid { height: 62vh; }
+    table { border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    th, td { border-bottom: 1px solid #e5e7eb; padding: 4px 10px; text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>pylibs-calc · what-if grid</h1>
+    <button id="new">New scenario</button>
+    <button id="shock">Shock Tech price +5%</button>
+    <button id="base">View base data</button>
+    <span id="status"></span>
+    <span id="error"></span>
+  </header>
+  <div id="grid"></div>
+  <table id="compare"></table>
+<script>
+const DATASET = "positions";
+const state = { scenario: null, showBase: false };
+
+async function post(url, body, headers = {}) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
+  const data = response.status === 204 ? null : await response.json();
+  if (!response.ok) throw Object.assign(new Error(data?.detail?.message ?? response.statusText), { status: response.status, data });
+  return data;
+}
+
+function showError(error) {
+  document.getElementById("error").textContent = error ? `${error.data?.detail?.code ?? "error"}: ${error.message}` : "";
+}
+
+function updateStatus() {
+  const s = state.scenario;
+  document.getElementById("status").textContent = s
+    ? `scenario "${s.name}" · version ${s.version} · ${state.showBase ? "showing base data" : "showing scenario"}`
+    : "no scenario yet";
+}
+
+async function newScenario() {
+  state.scenario = await post("/calc/scenarios", { dataset: DATASET, name: `demo ${new Date().toLocaleTimeString()}` });
+  state.showBase = false;
+  refresh();
+}
+
+function refresh() {
+  updateStatus();
+  api.refreshServerSide({ purge: true });
+  loadCompare();
+}
+
+async function loadCompare() {
+  const table = document.getElementById("compare");
+  if (!state.scenario) { table.innerHTML = ""; return; }
+  const result = await post("/calc/compare", {
+    dataset: DATASET,
+    scenario: state.scenario.id,
+    query: {
+      group_by: ["desk"],
+      measures: [{ name: "market_value", fn: "sum", of: "price * quantity" }],
+      sort: [{ by: "market_value__delta", desc: true }],
+    },
+  });
+  const fmt = (v, d = 2) => v === null ? "–" : Number(v).toLocaleString(undefined, { maximumFractionDigits: d });
+  table.innerHTML = "<tr><th>desk</th><th>market value</th><th>base</th><th>delta</th><th>%</th></tr>" +
+    result.rows.map(r => `<tr><td>${r.desk}</td><td>${fmt(r.market_value)}</td><td>${fmt(r.market_value__base)}</td>` +
+      `<td>${fmt(r.market_value__delta)}</td><td>${fmt(r.market_value__pct, 3)}</td></tr>`).join("");
+}
+
+const datasource = {
+  getRows(params) {
+    const scenario = state.scenario && !state.showBase ? state.scenario.id : null;
+    post("/calc/aggrid/rows", { dataset: DATASET, scenario, request: params.request })
+      .then(d => { showError(null); params.success({ rowData: d.rowData, rowCount: d.rowCount, pivotResultFields: d.pivotResultFields ?? undefined }); })
+      .catch(e => { showError(e); params.fail(); });
+  },
+};
+
+function distinct(column) {
+  return params => post("/calc/distinct", { dataset: DATASET, column })
+    .then(d => params.success(d.values))
+    .catch(() => params.success([]));
+}
+
+async function onCellEditRequest(event) {
+  try {
+    if (!state.scenario) await newScenario();
+    state.scenario = await post("/calc/aggrid/edit", {
+      scenario: state.scenario.id,
+      expected_version: state.scenario.version,
+      edit: { colId: event.colDef.field, newValue: event.newValue, data: event.data },
+    }, { "Idempotency-Key": crypto.randomUUID() });
+    showError(null);
+    updateStatus();
+    event.api.refreshServerSide({ purge: false });
+    loadCompare();
+  } catch (e) {
+    showError(e);
+  }
+}
+
+const gridOptions = {
+  rowModelType: "serverSide",
+  cacheBlockSize: 100,
+  columnDefs: [
+    { field: "desk", rowGroup: true, hide: true, enableRowGroup: true, enablePivot: true, filter: "agSetColumnFilter", filterParams: { values: distinct("desk") } },
+    { field: "sector", enableRowGroup: true, enablePivot: true, filter: "agSetColumnFilter", filterParams: { values: distinct("sector") } },
+    { field: "region", enableRowGroup: true, enablePivot: true, filter: "agSetColumnFilter", filterParams: { values: distinct("region") } },
+    { field: "rating", enableRowGroup: true, enablePivot: true, editable: true, filter: "agTextColumnFilter" },
+    { field: "position_id", filter: "agNumberColumnFilter" },
+    { field: "price", aggFunc: "avg", enableValue: true, editable: true, filter: "agNumberColumnFilter" },
+    { field: "quantity", aggFunc: "sum", enableValue: true, editable: true, filter: "agNumberColumnFilter" },
+    { field: "yield", aggFunc: "avg", enableValue: true, editable: true, filter: "agNumberColumnFilter" },
+  ],
+  defaultColDef: { flex: 1, minWidth: 110, sortable: true },
+  autoGroupColumnDef: { minWidth: 220 },
+  sideBar: ["columns", "filters"],
+  rowGroupPanelShow: "always",
+  pivotPanelShow: "always",
+  getRowId: params => params.data.__row_id,
+  getServerSideGroupKey: data => data.__group_key,
+  serverSidePivotResultFieldSeparator: "_",
+  readOnlyEdit: true,
+  onCellEditRequest,
+  serverSideDatasource: datasource,
+};
+
+const api = agGrid.createGrid(document.getElementById("grid"), gridOptions);
+
+document.getElementById("new").onclick = () => newScenario().catch(showError);
+document.getElementById("base").onclick = () => {
+  state.showBase = !state.showBase;
+  document.getElementById("base").textContent = state.showBase ? "View scenario" : "View base data";
+  refresh();
+};
+document.getElementById("shock").onclick = async () => {
+  try {
+    if (!state.scenario) await newScenario();
+    state.scenario = await post(`/calc/scenarios/${state.scenario.id}/steps`, {
+      steps: [{ kind: "shock", column: "price", op: "pct", value: 5, where: "sector == 'Tech'" }],
+      expected_version: state.scenario.version,
+    });
+    refresh();
+  } catch (e) { showError(e); }
+};
+updateStatus();
+</script>
+</body>
+</html>
