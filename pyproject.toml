@@ -13,12 +13,23 @@ dev = [
     "pytest-cov>=5.0",
     "ruff==0.16.9",
 ]
+docs = [
+    "markdown-exec>=1.12.3",
+    "mkdocs>=1.6,<2",
+    "mkdocs-autorefs>=1.4.4",
+    "mkdocs-material>=9.7.7",
+    "mkdocstrings[python]>=1.0.6",
+]
 
 [tool.ruff]
 line-length = 100
 target-version = "py310"
 # Generated graph output; also excluded in .pre-commit-config.yaml.
 extend-exclude = ["graphify-out"]
+
+[tool.ruff.format]
+# Code blocks in the docs hold snippet markers (--8<--) and hand-wrapped examples; leave them be.
+exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
@@ -38,4 +49,4 @@ init_forbid_extra = true
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
-testpaths = ["packages"]
+testpaths = ["packages", "docs/examples"]

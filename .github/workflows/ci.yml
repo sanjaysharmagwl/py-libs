@@ -37,6 +37,19 @@ jobs:
       - run: uv sync --all-packages --all-extras --locked
       - run: uv run pytest
 
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --all-packages --all-extras --group docs --locked
+      # The pages generated from graphify-out/graph.json must match the committed graph.
+      - run: uv run python scripts/docs_from_graph.py --check
+      # Strict: broken links, failing examples and docstring warnings fail the build.
+      - run: uv run --group docs mkdocs build --strict
+
   build:
     runs-on: ubuntu-latest
     steps:

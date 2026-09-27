@@ -27,7 +27,10 @@ uv run pytest packages/core/tests/test_text.py::test_name   # single test
 make build PKG=core          # wheel + sdist into dist/
 make new PKG=foo             # scaffold packages/foo -> dist pylibs-foo, import pylibs_foo
 make bump PKG=core PART=minor
-make graph                   # rebuild the code knowledge graph (graphify-out/)
+make graph                   # rebuild the code knowledge graph (graphify-out/), then docs-sync
+make docs-serve              # preview the docs site (MkDocs Material) at http://127.0.0.1:8000
+make docs-build              # strict docs build: broken links or failing examples are errors
+make docs-sync / docs-check  # regenerate / verify the docs pages generated from graph.json
 ```
 
 `PKG` is always the folder name under `packages/`; the distribution name is `pylibs-<PKG>` and the
@@ -51,6 +54,27 @@ grepping whole packages:
   local. `graph.json` has a union merge driver (set up by `graphify hook install`).
 - Setup for a fresh clone: `uv tool install graphifyy`, `graphify install` (Claude Code skill), then
   `make install` (installs the graphify git hooks).
+
+## Documentation
+
+`docs/` is an MkDocs Material site (`mkdocs.yml` at the root, deps in the `docs` dependency group,
+local only for now). `docs/contributing.md` is the full guide; the rules that matter:
+
+- **Examples run.** Scenario pages include `docs/examples/calc/NN_*.py` via snippets and execute
+  them with markdown-exec, so result tables are real. The scripts share `book.py` (a twelve-row
+  position book) and run under pytest (`docs/examples` is in `testpaths`), as do the QA golden
+  cases (`golden.py`; re-record with `--update` only for intended behaviour changes).
+- **Graph sync.** `scripts/docs_from_graph.py` reads `graphify-out/graph.json` and writes
+  `docs/calc/reference/generated/` (never edit by hand). Hand-written pages list the source files
+  they explain in `covers:` front matter; when a covered file's public surface changes in the
+  graph, the page is flagged in `stale.md` and gets a banner. After reviewing (and updating) the
+  page run `uv run python scripts/docs_from_graph.py --ack docs/<page>` and commit
+  `docs/.docs-sync.json`. A pre-commit hook re-syncs when `graph.json` is staged; CI runs
+  `--check` and `mkdocs build --strict`.
+- **When you change calc behaviour**, update the scenario page and example for it, and keep
+  every name in `pylibs_calc.__all__` mentioned on some page (`stale.md` lists misses).
+- Markdown is excluded from `ruff format` (it would rewrite `--8<--` snippet markers).
+- MkDocs is pinned `<2`: MkDocs 2.0 drops the plugin system these docs rely on.
 
 ## Architecture and conventions
 
