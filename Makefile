@@ -4,7 +4,7 @@ PREFIX ?= pylibs
 PART ?= patch
 DIST := $(PREFIX)-$(PKG)
 
-.PHONY: help install lint fmt typecheck test check build build-all bump new clean
+.PHONY: help install lint fmt typecheck test check build build-all bump new graph clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  %-10s %s\n",$$1,$$2}'
@@ -12,6 +12,8 @@ help:
 install: ## Sync all workspace packages + dev tools, install git hooks
 	uv sync --all-packages
 	uv run pre-commit install
+	@if command -v graphify >/dev/null; then graphify hook install; \
+	else echo "graphify not found; skipping graph hooks (uv tool install graphifyy)"; fi
 
 lint: ## Lint and check formatting
 	uv run ruff check .
@@ -49,6 +51,9 @@ new: ## Scaffold a new package: make new PKG=foo
 	rm packages/$(PKG)/pyproject.toml.bak
 	mkdir -p packages/$(PKG)/tests
 	uv sync --all-packages
+
+graph: ## Rebuild the code knowledge graph in graphify-out/ (AST only, no LLM calls)
+	graphify update .
 
 clean: ## Remove build artifacts and caches
 	rm -rf dist .pytest_cache .mypy_cache .ruff_cache

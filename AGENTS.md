@@ -16,7 +16,8 @@ A uv workspace monorepo of independently versioned Python packages published to 
 All tooling runs through `uv`; the Makefile wraps the common tasks (`make help`).
 
 ```bash
-make install                 # uv sync --all-packages + pre-commit install
+make help                    # list every make target
+make install                 # uv sync --all-packages + pre-commit install (+ graphify hooks)
 make check                   # lint + typecheck + test (what CI runs)
 make lint / make fmt         # ruff check + ruff format (--check vs. fix)
 make typecheck               # mypy --strict over packages/*/src
@@ -26,10 +27,30 @@ uv run pytest packages/core/tests/test_text.py::test_name   # single test
 make build PKG=core          # wheel + sdist into dist/
 make new PKG=foo             # scaffold packages/foo -> dist pylibs-foo, import pylibs_foo
 make bump PKG=core PART=minor
+make graph                   # rebuild the code knowledge graph (graphify-out/)
 ```
 
 `PKG` is always the folder name under `packages/`; the distribution name is `pylibs-<PKG>` and the
 import name is `pylibs_<PKG>`.
+
+## Code knowledge graph (graphify)
+
+`graphify-out/` holds a [graphify](https://github.com/safishamsi/graphify) knowledge graph of the
+code (functions, imports, calls, cross-package edges). Use it to find code instead of reading or
+grepping whole packages:
+
+- For codebase questions, first run `graphify query "<question>"`. Use `graphify path "<A>" "<B>"`
+  for relationships and `graphify explain "<concept>"` for one concept. These return a scoped
+  subgraph, usually much smaller than `GRAPH_REPORT.md` or raw grep output.
+- Read `graphify-out/GRAPH_REPORT.md` only for broad architecture review or when query/path/explain
+  don't surface enough.
+- The graph is code-only (tree-sitter AST, no LLM calls). After changing code, run `make graph`
+  (`graphify update .`); add `--force` after refactors that delete code. The post-commit hook also
+  rebuilds it, leaving `graph.json` modified to commit along with your next change.
+- Only `graph.json` and `GRAPH_REPORT.md` are committed; everything else under `graphify-out/` is
+  local. `graph.json` has a union merge driver (set up by `graphify hook install`).
+- Setup for a fresh clone: `uv tool install graphifyy`, `graphify install` (Claude Code skill), then
+  `make install` (installs the graphify git hooks).
 
 ## Architecture and conventions
 
