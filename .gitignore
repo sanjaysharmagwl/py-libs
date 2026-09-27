@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# graphify: commit only the queryable outputs; caches and machine-specific files stay local
+graphify-out/*
+!graphify-out/graph.json
+!graphify-out/GRAPH_REPORT.md
