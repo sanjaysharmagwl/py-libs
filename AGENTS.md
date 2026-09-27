@@ -68,7 +68,12 @@ grepping whole packages:
 - **Tests**: pytest uses `--import-mode=importlib`, so test files have no `__init__.py` and
   basenames need not be unique across packages.
 - **Lint**: ruff, line length 100, rules `E,F,I,UP,B,SIM`; `pylibs_*` is first-party for isort.
+  `ruff format` also formats Python code blocks in Markdown files. `graphify-out/` is excluded.
   Pre-commit also runs `uv-lock`, so `uv.lock` must stay in sync (CI uses `--locked`).
+- **Ruff version**: pinned exactly (`ruff==X.Y.Z`) in the root `dev` group, and the
+  `astral-sh/ruff-pre-commit` `rev` in `.pre-commit-config.yaml` must be `vX.Y.Z`, so pre-commit,
+  `make lint` and CI all run the same ruff. To upgrade, change both, run `uv lock`, then
+  `uv run pre-commit run --all-files` and `make check`.
 
 ## Releasing
 
