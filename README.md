@@ -7,6 +7,7 @@ Python packages, each versioned and released independently to PyPI.
 | --- | --- | --- |
 | [`pylibs-core`](packages/core) | `packages/core` | Core utilities shared across packages |
 | [`pylibs-utils`](packages/utils) | `packages/utils` | Higher-level helpers (depends on `pylibs-core`) |
+| [`pylibs-calc`](packages/calc) | `packages/calc` | What-if calculation engine on Polars (optional `fastapi`, `redis` extras) |
 
 ## Layout
 
@@ -31,7 +32,7 @@ they're editable installs, and the published wheel lists a normal version requir
 Requires [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
 ```bash
-make install      # uv sync --all-packages + install pre-commit hooks
+make install      # uv sync --all-packages --all-extras + install pre-commit hooks
 make check        # lint + typecheck + test
 make test PKG=core
 make fmt

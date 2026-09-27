@@ -9,8 +9,8 @@ DIST := $(PREFIX)-$(PKG)
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  %-10s %s\n",$$1,$$2}'
 
-install: ## Sync all workspace packages + dev tools, install git hooks
-	uv sync --all-packages
+install: ## Sync all workspace packages (with extras) + dev tools, install git hooks
+	uv sync --all-packages --all-extras
 	uv run pre-commit install
 	@if command -v graphify >/dev/null; then graphify hook install; \
 	else echo "graphify not found; skipping graph hooks (uv tool install graphifyy)"; fi
@@ -50,7 +50,7 @@ new: ## Scaffold a new package: make new PKG=foo
 		-e 's/^readme = "README.md"/&\nlicense = "Apache-2.0"/' packages/$(PKG)/pyproject.toml
 	rm packages/$(PKG)/pyproject.toml.bak
 	mkdir -p packages/$(PKG)/tests
-	uv sync --all-packages
+	uv sync --all-packages --all-extras
 
 graph: ## Rebuild the code knowledge graph in graphify-out/ (AST only, no LLM calls)
 	graphify update .

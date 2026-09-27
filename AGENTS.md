@@ -17,7 +17,7 @@ All tooling runs through `uv`; the Makefile wraps the common tasks (`make help`)
 
 ```bash
 make help                    # list every make target
-make install                 # uv sync --all-packages + pre-commit install (+ graphify hooks)
+make install                 # uv sync --all-packages --all-extras + pre-commit install (+ graphify hooks)
 make check                   # lint + typecheck + test (what CI runs)
 make lint / make fmt         # ruff check + ruff format (--check vs. fix)
 make typecheck               # mypy --strict over packages/*/src
@@ -69,6 +69,16 @@ grepping whole packages:
   basenames need not be unique across packages.
 - **Lint**: ruff, line length 100, rules `E,F,I,UP,B,SIM`; `pylibs_*` is first-party for isort.
   Pre-commit also runs `uv-lock`, so `uv.lock` must stay in sync (CI uses `--locked`).
+- **Optional extras**: packages may declare `[project.optional-dependencies]` (e.g. `pylibs-calc`'s
+  `fastapi` and `redis`). CI, release and `make install` sync with `--all-extras`, so mypy and the
+  tests always see them; keep extras out of a package's top-level import path (a subprocess test
+  in `packages/calc/tests/test_runtime.py` guards this) and raise an `ImportError` naming the
+  extra when one is missing. mypy runs with the `pydantic.mypy` plugin.
+- **`pylibs-calc` specifics**: every calculation is a logical plan (`compile/logical.py`) executed
+  twice: by Polars (`compile/`) and by the pure-Python reference (`verify/reference.py`).
+  Any change to semantics must update both; `tests/test_property.py` fuzzes them against each
+  other. Don't add `from __future__ import annotations` to `integrations/fastapi.py` (FastAPI
+  needs the route annotations as real objects).
 
 ## Releasing
 
