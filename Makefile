@@ -4,7 +4,7 @@ PREFIX ?= pylibs
 PART ?= patch
 DIST := $(PREFIX)-$(PKG)
 
-.PHONY: help install lint fmt typecheck test check build build-all bump new graph clean
+.PHONY: help install lint fmt typecheck test check build build-all bump new graph docs-serve docs-build docs-sync docs-check clean
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  %-10s %s\n",$$1,$$2}'
@@ -52,9 +52,22 @@ new: ## Scaffold a new package: make new PKG=foo
 	mkdir -p packages/$(PKG)/tests
 	uv sync --all-packages --all-extras
 
-graph: ## Rebuild the code knowledge graph in graphify-out/ (AST only, no LLM calls)
+graph: ## Rebuild the code knowledge graph in graphify-out/ (AST only), then sync the docs
 	graphify update .
+	$(MAKE) docs-sync
+
+docs-serve: ## Preview the docs site at http://127.0.0.1:8000 (reloads on edit)
+	uv run --group docs mkdocs serve
+
+docs-build: ## Build the docs site into site/ (strict: warnings and failing examples are errors)
+	uv run --group docs mkdocs build --strict
+
+docs-sync: ## Regenerate the docs pages built from graphify-out/graph.json
+	uv run python scripts/docs_from_graph.py
+
+docs-check: ## Fail if the generated docs pages are out of date with graph.json
+	uv run python scripts/docs_from_graph.py --check
 
 clean: ## Remove build artifacts and caches
-	rm -rf dist .pytest_cache .mypy_cache .ruff_cache
+	rm -rf dist site .pytest_cache .mypy_cache .ruff_cache
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +

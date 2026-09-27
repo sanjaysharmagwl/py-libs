@@ -1,14 +1,20 @@
-exclude: ^graphify-out/
+# graphify-out/ is generated; only graph.json is seen by hooks, and only by docs-sync below.
+exclude: ^graphify-out/(?!graph\.json$)
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
+        exclude: ^graphify-out/
       - id: end-of-file-fixer
+        exclude: ^graphify-out/
       - id: check-yaml
+        # mkdocs.yml uses !!python/name tags, which the safe loader rejects.
+        args: [--unsafe]
       - id: check-toml
       - id: check-added-large-files
+        exclude: ^graphify-out/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.9
@@ -21,3 +27,15 @@ repos:
     rev: 0.7.13
     hooks:
       - id: uv-lock
+
+  - repo: local
+    hooks:
+      # When the post-commit graphify hook has rebuilt graph.json and it is staged with the next
+      # commit (or a page, its covers: list or the public API changes), regenerate the docs pages
+      # built from the graph. If they change, the commit stops so you can stage them with it.
+      - id: docs-sync
+        name: sync docs with the code graph
+        entry: uv run python scripts/docs_from_graph.py
+        language: system
+        pass_filenames: false
+        files: ^(graphify-out/graph\.json|docs/.+\.md|docs/\.docs-sync\.json|packages/calc/src/pylibs_calc/__init__\.py|scripts/docs_from_graph\.py)$

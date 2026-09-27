@@ -16,6 +16,8 @@ pyproject.toml          # workspace root: members, dev tools, ruff/mypy/pytest c
 uv.lock                 # one lockfile for the whole workspace
 Makefile                # common tasks (run `make help`)
 scripts/release_info.py # maps a release tag to its package and checks the version
+scripts/docs_from_graph.py # keeps docs/ in step with the code graph (graphify-out/)
+mkdocs.yml, docs/       # the documentation site; see docs/contributing.md
 .github/workflows/      # ci.yml (lint/test/build), release.yml (tag -> PyPI)
 packages/<name>/        # one distributable package per folder
   pyproject.toml
@@ -36,6 +38,7 @@ make install      # uv sync --all-packages --all-extras + install pre-commit hoo
 make check        # lint + typecheck + test
 make test PKG=core
 make fmt
+make docs-serve   # the documentation site (docs/, MkDocs Material) at http://127.0.0.1:8000
 ```
 
 ### Adding a package

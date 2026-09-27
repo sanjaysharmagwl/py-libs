@@ -1,0 +1,405 @@
+[
+  {
+    "id": "sum-of-nothing-is-null",
+    "title": "A sum over no rows is null, not 0",
+    "why": "Commodities has no short positions, so its short notional is null (SQL semantics).",
+    "kind": "run",
+    "request": {
+      "dataset": "positions",
+      "query": {
+        "group_by": [
+          "desk"
+        ],
+        "measures": [
+          {
+            "name": "short",
+            "fn": "sum",
+            "of": "price * quantity",
+            "where": "quantity < 0"
+          }
+        ],
+        "sort": [
+          {
+            "by": "desk"
+          }
+        ]
+      }
+    },
+    "expected": [
+      {
+        "desk": "Commodities",
+        "short": null
+      },
+      {
+        "desk": "Credit",
+        "short": "-30630.00"
+      },
+      {
+        "desk": "Equities",
+        "short": "-145250.00"
+      },
+      {
+        "desk": "FX",
+        "short": "-7415000.00"
+      },
+      {
+        "desk": "Rates",
+        "short": "-50600.00"
+      }
+    ]
+  },
+  {
+    "id": "null-condition-is-false",
+    "title": "A null condition drops the row",
+    "why": "yield is null for equities, so `yield > 0` is null for them and they are filtered out.",
+    "kind": "run",
+    "request": {
+      "dataset": "positions",
+      "query": {
+        "filter": "yield > 0",
+        "measures": [
+          {
+            "name": "n",
+            "fn": "count_rows"
+          }
+        ]
+      }
+    },
+    "expected": [
+      {
+        "n": 6
+      }
+    ]
+  },
+  {
+    "id": "three-valued-or",
+    "title": "`null or true` is true",
+    "why": "Equities have a null yield, but `or desk == 'Equities'` makes the condition true.",
+    "kind": "run",
+    "request": {
+      "dataset": "positions",
+      "query": {
+        "filter": "yield > 0.05 or desk == 'Equities'",
+        "select": [
+          "position_id",
+          "desk"
+        ],
+        "sort": [
+          {
+            "by": "position_id"
+          }
+        ]
+      }
+    },
+    "expected": [
+      {
+        "position_id": 4,
+        "desk": "Credit"
+      },
+      {
+        "position_id": 5,
+        "desk": "Credit"
+      },
+      {
+        "position_id": 7,
+        "desk": "Equities"
+      },
+      {
+        "position_id": 8,
+        "desk": "Equities"
+      },
+      {
+        "position_id": 9,
+        "desk": "Equities"
+      }
+    ]
+  },
+  {
+    "id": "half-even-shock",
+    "title": "Shocked decimals round half-to-even",
+    "why": "102.10 × 1.05 = 107.205, which rounds to 107.20 (even), not 107.21.",
+    "kind": "run",
+    "request": {
+      "dataset": "positions",
+      "what_if": [
+        {
+          "kind": "shock",
+          "column": "price",
+          "op": "pct",
+          "value": 5
+        }
+      ],
+      "query": {
+        "filter": "position_id == 6",
+        "select": [
+          "position_id",
+          "price"
+        ]
+      }
+    },
+    "expected": [
+      {
+        "position_id": 6,
+        "price": "107.20"
+      }
+    ]
+  },
+  {
+    "id": "integer-shock-round",
+    "title": "Integer shocks need `round`, then round half-to-even",
+    "why": "−500 × 1.033 = −516.5, which rounds to −516.",
+    "kind": "run",
+    "request": {
+      "dataset": "positions",
+      "what_if": [
+        {
+          "kind": "shock",
+          "column": "quantity",
+          "op": "pct",
+          "value": "3.3",
+          "round": true
+        }
+      ],
+      "query": {
+        "filter": "position_id == 2",
+        "select": [
+          "position_id",
+          "quantity"
+        ]
+      }
+    },
+    "expected": [
+      {
+        "position_id": 2,
+        "quantity": -516
+      }
+    ]
+  },
+  {
+    "id": "ratio-of-sums-at-every-level",
+    "title": "Post ratios are ratios of sums at every rollup level",
+    "why": "The grand-total avg_px is total notional / total quantity, not the mean of the regional averages.",
+    "kind": "run",
+    "request": {
+      "dataset": "positions",
+      "query": {
+        "filter": "desk in ('Rates', 'Credit')",
+        "group_by": [
+          "region"
+        ],
+        "rollup": true,
+        "measures": [
+          {
+            "name": "notional",
+            "fn": "sum",
+            "of": "price * quantity"
+          },
+          {
+            "name": "quantity",
+            "fn": "sum",
+            "of": "quantity"
+          }
+        ],
+        "post": [
+          {
+            "name": "avg_px",
+            "expr": "notional / quantity"
+          }
+        ],
+        "sort": [
+          {
+            "by": "region"
+          }
+        ]
+      }
+    },
+    "expected": [
+      {
+        "region": "AMER",
+        "__level": 1,
+        "notional": "145670.00",
+        "quantity": 1500,
+        "avg_px": "97.1133333333"
+      },
+      {
+        "region": "APAC",
+        "__level": 1,
+        "notional": "199600.00",
+        "quantity": 2000,
+        "avg_px": "99.8000000000"
+      },
+      {
+        "region": "EMEA",
+        "__level": 1,
+        "notional": "55480.00",
+        "quantity": 700,
+        "avg_px": "79.2571428571"
+      },
+      {
+        "region": null,
+        "__level": 0,
+        "notional": "400750.00",
+        "quantity": 4200,
+        "avg_px": "95.4166666667"
+      }
+    ]
+  },
+  {
+    "id": "wavg-skips-nulls",
+    "title": "wavg ignores rows where the value or the weight is null",
+    "why": "Only the six bonds have yields; the book-wide weighted yield uses them alone.",
+    "kind": "run",
+    "request": {
+      "dataset": "positions",
+      "query": {
+        "measures": [
+          {
+            "name": "wavg_yield",
+            "fn": "wavg",
+            "of": "yield",
+            "weight": "abs(float(price * quantity))"
+          }
+        ]
+      },
+      "options": {
+        "deterministic": true
+      }
+    },
+    "expected": [
+      {
+        "wavg_yield": 0.03420154116581737
+      }
+    ]
+  },
+  {
+    "id": "divide-by-zero-is-null",
+    "title": "Division by zero gives null",
+    "why": "The Commodities desk has no shorts, so the count of shorts is 0 and the ratio is null.",
+    "kind": "run",
+    "request": {
+      "dataset": "positions",
+      "query": {
+        "filter": "desk == 'Commodities'",
+        "group_by": [
+          "desk"
+        ],
+        "measures": [
+          {
+            "name": "long_qty",
+            "fn": "sum",
+            "of": "quantity",
+            "where": "quantity > 0"
+          },
+          {
+            "name": "short_qty",
+            "fn": "count",
+            "of": "quantity",
+            "where": "quantity < 0"
+          }
+        ],
+        "post": [
+          {
+            "name": "ratio",
+            "expr": "long_qty / short_qty"
+          }
+        ]
+      }
+    },
+    "expected": [
+      {
+        "desk": "Commodities",
+        "long_qty": 150,
+        "short_qty": 0,
+        "ratio": null
+      }
+    ]
+  },
+  {
+    "id": "override-flows-into-formula",
+    "title": "Formulas are recomputed after later overrides",
+    "why": "The notional formula is written first, the price override second; notional uses the new price.",
+    "kind": "run",
+    "request": {
+      "dataset": "positions",
+      "what_if": [
+        {
+          "kind": "formula",
+          "name": "notional",
+          "expr": "price * quantity"
+        },
+        {
+          "kind": "override",
+          "edits": [
+            {
+              "key": {
+                "position_id": 1
+              },
+              "column": "price",
+              "value": "100.00"
+            }
+          ]
+        }
+      ],
+      "query": {
+        "filter": "position_id == 1",
+        "select": [
+          "price",
+          "quantity",
+          "notional"
+        ]
+      }
+    },
+    "expected": [
+      {
+        "price": "100.00",
+        "quantity": 1000,
+        "notional": "100000.00"
+      }
+    ]
+  },
+  {
+    "id": "compare-pct-null-on-zero-base",
+    "title": "Compare's percentage is null when the base is 0",
+    "why": "Before the override, the short count of Commodities is 0; after it, 1.",
+    "kind": "compare",
+    "request": {
+      "dataset": "positions",
+      "what_if": [
+        {
+          "kind": "override",
+          "edits": [
+            {
+              "key": {
+                "position_id": 12
+              },
+              "column": "quantity",
+              "value": -150
+            }
+          ]
+        }
+      ],
+      "query": {
+        "filter": "desk == 'Commodities'",
+        "group_by": [
+          "desk"
+        ],
+        "measures": [
+          {
+            "name": "shorts",
+            "fn": "count_rows",
+            "where": "quantity < 0"
+          }
+        ]
+      }
+    },
+    "expected": [
+      {
+        "desk": "Commodities",
+        "shorts": 1,
+        "shorts__base": 0,
+        "shorts__delta": 1,
+        "shorts__pct": null
+      }
+    ]
+  }
+]

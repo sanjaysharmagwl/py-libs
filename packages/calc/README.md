@@ -17,6 +17,10 @@ pip install "pylibs-calc[fastapi]"   # + FastAPI router
 pip install "pylibs-calc[redis]"     # + Redis scenario store
 ```
 
+**Documentation:** the [docs site](https://github.com/sanjaysharmagwl/py-libs/tree/master/docs/calc)
+has a runnable, finance-flavoured scenario for every feature, a QA guide and the API reference.
+From a clone, `make install && make docs-serve` serves it locally.
+
 ## Quick start
 
 ```python

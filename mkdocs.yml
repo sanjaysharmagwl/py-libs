@@ -1,0 +1,147 @@
+site_name: py-libs
+site_description: Documentation for the py-libs packages, starting with the pylibs-calc what-if engine.
+repo_url: https://github.com/sanjaysharmagwl/py-libs
+repo_name: sanjaysharmagwl/py-libs
+edit_uri: edit/master/docs/
+strict: true
+
+# The example scripts are included into pages with snippets and run by markdown-exec; they are
+# not pages themselves.
+exclude_docs: |
+  examples/
+  hooks.py
+
+theme:
+  name: material
+  icon:
+    logo: material/calculator-variant-outline
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: teal
+      toggle: {icon: material/weather-night, name: Dark mode}
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: teal
+      toggle: {icon: material/weather-sunny, name: Light mode}
+  features:
+    - content.code.copy
+    - content.tabs.link
+    - navigation.indexes
+    - navigation.sections
+    - navigation.tabs
+    - navigation.top
+    - navigation.footer
+    - search.highlight
+    - search.suggest
+    - toc.follow
+
+hooks:
+  - docs/hooks.py
+
+plugins:
+  - search
+  - autorefs
+  - markdown-exec
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [packages/calc/src, packages/core/src, packages/utils/src]
+          options:
+            docstring_style: sphinx
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            show_signature_annotations: true
+            separate_signature: true
+            members_order: source
+            merge_init_into_class: true
+            filters: ["!^_"]
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path: [docs/examples/calc, .]
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - Home: index.md
+  - pylibs-calc:
+      - calc/index.md
+      - Getting started:
+          - Install: calc/getting-started/install.md
+          - Quick start: calc/getting-started/quickstart.md
+          - Run the demo grid: calc/getting-started/run-the-demo.md
+          - Call the API with curl: calc/getting-started/call-the-api.md
+      - Concepts:
+          - Architecture: calc/concepts/architecture.md
+          - Datasets and the catalog: calc/concepts/datasets.md
+          - Order of evaluation: calc/concepts/evaluation-order.md
+          - Numbers, types and nulls: calc/concepts/numbers-types-nulls.md
+          - Formula language: calc/concepts/formula-language.md
+      - Scenarios by feature:
+          - calc/scenarios/index.md
+          - Filter and derive: calc/scenarios/filter-derive.md
+          - Measures: calc/scenarios/measures.md
+          - Filtered measures: calc/scenarios/filtered-measures.md
+          - Ratios after aggregation: calc/scenarios/post-ratios.md
+          - Having: calc/scenarios/having.md
+          - Subtotals (rollup): calc/scenarios/rollup.md
+          - Pivot: calc/scenarios/pivot.md
+          - Sort and page: calc/scenarios/sort-page.md
+          - Override a cell: calc/scenarios/override.md
+          - Shock a column: calc/scenarios/shock.md
+          - Formula columns: calc/scenarios/formula.md
+          - Disable a step: calc/scenarios/disable.md
+          - Saved scenarios and forks: calc/scenarios/saved-scenarios.md
+          - Compare two sides: calc/scenarios/compare.md
+          - Access control: calc/scenarios/access-control.md
+          - Audit a number: calc/scenarios/audit.md
+          - Errors and limits: calc/scenarios/errors-limits.md
+      - Integrations:
+          - FastAPI: calc/integrations/fastapi.md
+          - AG Grid: calc/integrations/aggrid.md
+          - Redis scenario store: calc/integrations/redis.md
+      - Operations:
+          - Performance: calc/operations/performance.md
+          - Deploying on Kubernetes: calc/operations/kubernetes.md
+          - Troubleshooting: calc/operations/troubleshooting.md
+      - QA:
+          - Testing guide: calc/qa/testing-guide.md
+          - Golden cases: calc/qa/golden-cases.md
+      - Reference:
+          - Python API: calc/reference/api.md
+          - Request schema: calc/reference/request-schema.md
+          - Error codes: calc/reference/error-codes.md
+          - Components (generated): calc/reference/generated/components.md
+          - Docs freshness (generated): calc/reference/generated/stale.md
+      - Assumptions and limitations: calc/limitations.md
+      - Glossary: calc/glossary.md
+  - Other packages:
+      - pylibs-core: packages/core.md
+      - pylibs-utils: packages/utils.md
+  - Contributing to the docs: contributing.md
