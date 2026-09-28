@@ -2,7 +2,7 @@
 
 # Docs freshness
 
-Checked against the code graph at commit `580901aa8505`.
+Checked against the code graph at commit `1fd42018150c`.
 
 Each hand-written page lists the source files it explains in its front matter (`covers:`). A page shows up here when the public surface of one of those files has changed since someone last reviewed the page: classes or functions added or removed, docstrings edited, or different calls to other modules. After checking the page, run `uv run python scripts/docs_from_graph.py --ack docs/<page>` and commit the result.
 
@@ -12,4 +12,4 @@ Every page is up to date with the code. :white_check_mark:
 
 ## Public names no page mentions
 
-Every name in `pylibs_calc.__all__` is mentioned on at least one page.
+Every exported name (`__all__` of each package) is mentioned on at least one page.

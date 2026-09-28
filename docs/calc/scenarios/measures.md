@@ -49,6 +49,8 @@ covers:
 
 `of` and `weight` are formulas, not just column names. `{"fn": "sum", "of": "price * quantity"}` works without a separate `derive`.
 
+Plugins can add more `fn`s, such as a median or a VaR quantile (see [`AggregateDef`](../concepts/plugins.md#functions-and-aggregates)). They take `of`, and are recomputed from the rows at every subtotal level, like the built-ins.
+
 ## What to notice
 
 - **Equities, FX and Commodities** have no yields, so `with_yield` is 0 and `wavg_yield` is null. There is no fake zero.

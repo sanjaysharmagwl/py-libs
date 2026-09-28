@@ -25,10 +25,10 @@ The host service describes **who is asking** with a `CalcContext`, built from it
 
 ## What to notice
 
-- **`row_filter`** is applied to the dataset **before anything else**: before scenarios, shocks, filters and aggregation. Totals only ever include rows the caller may see.
+- **`row_filter`** is applied to the dataset **before anything else**: before plugin transforms (such as what-if scenarios and shocks), filters and aggregation. Totals only ever include rows the caller may see.
 - **`allowed_columns`** hides every other non-key column, from queries, schemas and results. A query that mentions `yield` gets `422 unknown_column`, as if the column did not exist.
 - **Key columns** (`position_id`) are always visible, because edits and row identity need them.
-- **`principal`** is recorded as the author of scenario changes.
+- **`principal`** identifies the caller to your `authorize` hook and to plugins; the what-if plugin records it as the author of scenario changes.
 - The context is part of the **cache key**, so two users with different entitlements never share a cached result.
 
 ## Wiring it into FastAPI
@@ -44,12 +44,13 @@ create_router(
 )
 ```
 
-## Scenario permissions
+## Scenario permissions (what-if plugin)
 
-`EngineConfig.authorize(ctx, action, scenario)` is called for `scenario.read`, `scenario.write`, `scenario.create` and `scenario.delete`. Raise `Forbidden` to refuse (`403`). For example, you might let only a scenario's owner append to it:
+`EngineConfig.authorize(ctx, action, resource)` is called by plugins before protected actions. The what-if plugin calls it for `scenario.read`, `scenario.write`, `scenario.create` and `scenario.delete`, with the scenario as the resource. Raise `Forbidden` to refuse (`403`). For example, you might let only a scenario's owner append to it:
 
 ```python
-from pylibs_calc import EngineConfig, Forbidden
+from pylibs_calc import CalcEngine, EngineConfig, Forbidden
+from pylibs_calc_whatif import WhatIfPlugin
 
 
 def authorize(ctx, action, scenario):
@@ -57,5 +58,5 @@ def authorize(ctx, action, scenario):
         raise Forbidden("only the owner can change this scenario")
 
 
-engine = CalcEngine(catalog, store, EngineConfig(authorize=authorize))
+engine = CalcEngine(catalog, EngineConfig(authorize=authorize), plugins=[WhatIfPlugin(store)])
 ```

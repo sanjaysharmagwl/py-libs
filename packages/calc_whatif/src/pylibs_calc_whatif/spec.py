@@ -1,4 +1,6 @@
-"""Scenario steps: what-if changes that keep every row of the dataset.
+"""What-if request spec: scenario steps and the ``extensions.whatif`` block.
+
+Steps are what-if changes that keep every row of the dataset.
 
 A scenario is an ordered log of these steps over a pinned dataset version. Value changes
 (:class:`Override`, :class:`Shock`) apply in log order; :class:`Formula` columns are evaluated
@@ -9,13 +11,11 @@ after all value changes, in dependency order, so a later override of ``price`` s
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
-from pylibs_calc.dtypes import Scalar, canonical_decimal, parse_decimal
-from pylibs_calc.spec.base import Model
-from pylibs_calc.spec.expr import Expr
+from pylibs_calc.ext import Expr, Model, Scalar, canonical_decimal, parse_decimal
 
 
 class Edit(Model):
@@ -76,3 +76,24 @@ class Disable(Model):
 
 
 ScenarioStep = Annotated[Override | Shock | Formula | Disable, Field(discriminator="kind")]
+
+
+class ScenarioRef(Model):
+    """A saved scenario and, optionally, a version (log length) to read it at."""
+
+    id: str = Field(min_length=1)
+    version: int | None = Field(default=None, ge=0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _from_str(cls, data: Any) -> Any:
+        return {"id": data} if isinstance(data, str) else data
+
+
+class WhatIf(Model):
+    """The ``extensions.whatif`` block of a request: a saved ``scenario`` (optional) followed by
+    extra ``steps``. ``strict_edits`` rejects overrides whose key matches no row."""
+
+    scenario: ScenarioRef | None = None
+    steps: tuple[ScenarioStep, ...] = ()
+    strict_edits: bool = True

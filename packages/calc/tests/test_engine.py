@@ -351,7 +351,7 @@ def test_engine_busy(catalog: Catalog) -> None:
     holding = threading.Event()
 
     def hold() -> None:
-        with engine._executor.slot():
+        with engine.kernel.slot():
             holding.set()
             release.wait(5)
 
@@ -372,11 +372,10 @@ def test_explain(engine: CalcEngine) -> None:
     info = engine.explain(
         {
             "dataset": "pos",
-            "what_if": [{"kind": "formula", "name": "mv", "expr": "price * qty"}],
-            "query": {"derive": [{"name": "d", "expr": "mv * 2"}], "filter": "qty > 10"},
+            "query": {"derive": [{"name": "d", "expr": "price * 2"}], "filter": "qty > 10"},
         }
     )
-    assert info["lineage"]["formulas"] == {"mv": "price * qty"}
-    assert info["lineage"]["derived"] == {"d": "mv * 2"}
-    assert info["columns"]["mv"] == "decimal(2)"
+    assert info["lineage"]["derived"] == {"d": "price * 2"}
+    assert info["columns"]["d"] == "decimal(2)"
+    assert info["steps"] == [] and info["extensions"] == {}
     assert "FILTER" in info["plan"]

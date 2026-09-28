@@ -64,7 +64,7 @@ def test_membership_and_null_checks() -> None:
         ("x[0]", "Subscript"),
         ("lambda: 1", "Lambda"),
         ("__import__('os')", "unknown function"),
-        ("open('f')", "unknown function"),
+        ("Open('f')", "unknown function"),
         ("x // 2", "FloorDiv"),
         ("x % 2", "Mod"),
         ("x == None", "is None"),

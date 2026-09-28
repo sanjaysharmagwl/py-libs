@@ -1,7 +1,7 @@
 ---
 covers:
-  - packages/calc/src/pylibs_calc/spec/scenario.py
-  - packages/calc/src/pylibs_calc/compile/logical.py
+  - packages/calc_whatif/src/pylibs_calc_whatif/spec.py
+  - packages/calc_whatif/src/pylibs_calc_whatif/planner.py
 ---
 
 # Formula columns
@@ -9,6 +9,10 @@ covers:
 !!! question "The business question"
     *"My scenario defines notional as price × quantity. If someone later corrects a price, does
     notional follow?"*
+
+!!! info "What-if plugin"
+    This feature comes from the [what-if plugin](../whatif/index.md) (`pylibs-calc-whatif`). Its
+    steps go in a request's `extensions.whatif` block.
 
 A **formula step** defines a column that belongs to the scenario, so every query on that scenario sees it. Unlike a query's `derive`, it is **recomputed after all value changes**, whatever their order in the log.
 
@@ -44,7 +48,7 @@ A **formula step** defines a column that belongs to the scenario, so every query
 
 | | Query `derive` | Scenario `formula` |
 | --- | --- | --- |
-| Lives in | One request's query | A scenario (or a request's `what_if`) |
+| Lives in | One request's query | A scenario (or a request's `extensions.whatif.steps`) |
 | Seen by | That query | Every query on the scenario, and compares |
 | Can be edited or shocked | No | No: it is always computed |
 | Typical use | A one-off view column | A business definition you want everyone to share |

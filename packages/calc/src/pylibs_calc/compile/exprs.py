@@ -214,6 +214,8 @@ def _binary(t: Typed, node: Binary) -> pl.Expr:
 
 
 def _func(t: Typed, node: Func) -> pl.Expr:
+    if t.impl is not None:
+        return _plugin_func(t)
     name = node.name
     args = t.args
     first = args[0]
@@ -256,6 +258,18 @@ def _func(t: Typed, node: Func) -> pl.Expr:
     if name == "starts_with":
         return x.str.starts_with(pattern)
     return x.str.ends_with(pattern)
+
+
+def _plugin_func(t: Typed) -> pl.Expr:
+    """A plugin function: arguments at their rigid types, result cast to the declared type."""
+    args = [materialize(a) for a in t.args]
+    out: pl.Expr = t.impl.polars(*args)
+    out = out.cast(to_polars(t.ltype))
+    if t.ltype.kind is Kind.FLOAT:
+        out = finite(out)
+    if t.impl.nulls == "propagate" and args:
+        out = pl.when(pl.all_horizontal([a.is_not_null() for a in args])).then(out)
+    return out
 
 
 def _cast(t: Typed, node: Cast) -> pl.Expr:

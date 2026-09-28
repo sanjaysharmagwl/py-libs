@@ -1,8 +1,8 @@
 """Saved what-if scenarios: append-only, hash-chained logs of steps over a dataset version."""
 
-from pylibs_calc.scenario.manager import ScenarioManager
-from pylibs_calc.scenario.model import LogEntry, Scenario, verify_chain
-from pylibs_calc.scenario.store import InMemoryScenarioStore, ScenarioStore
+from pylibs_calc_whatif.scenario.manager import ScenarioManager
+from pylibs_calc_whatif.scenario.model import LogEntry, Scenario, verify_chain
+from pylibs_calc_whatif.scenario.store import InMemoryScenarioStore, ScenarioStore
 
 __all__ = [
     "InMemoryScenarioStore",

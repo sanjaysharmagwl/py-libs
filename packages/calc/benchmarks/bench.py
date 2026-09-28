@@ -16,7 +16,8 @@ from typing import Any
 import numpy as np
 import polars as pl
 
-from pylibs_calc import CalcEngine, Catalog, EngineConfig, InMemoryScenarioStore
+from pylibs_calc import CalcEngine, Catalog, EngineConfig
+from pylibs_calc_whatif import InMemoryScenarioStore, WhatIfPlugin
 
 
 def book(rows: int, seed: int = 7, *, categorical: bool = False) -> pl.DataFrame:
@@ -70,8 +71,9 @@ def main() -> None:
     )
 
     store = InMemoryScenarioStore()
-    uncached = CalcEngine(catalog, store, EngineConfig(cache_bytes=0))
-    cached = CalcEngine(catalog, store)
+    uncached = CalcEngine(catalog, EngineConfig(cache_bytes=0), plugins=[WhatIfPlugin(store)])
+    cached = CalcEngine(catalog, plugins=[WhatIfPlugin(store)])
+    scenarios = cached.plugin(WhatIfPlugin).scenarios
     aggregate = {
         "dataset": "book",
         "query": {
@@ -92,12 +94,12 @@ def main() -> None:
             "page": {"limit": 100},
         },
     }
-    scenario = cached.scenarios.create("book", "bench")
+    scenario = scenarios.create("book", "bench")
     edits = [
         {"key": {"id": i}, "column": "qty", "value": 100}
         for i in range(0, min(args.rows, 1_000_000), max(1, args.rows // 1000))
     ]
-    cached.scenarios.append(
+    scenarios.append(
         scenario.id,
         [
             {"kind": "override", "edits": edits},
@@ -114,7 +116,7 @@ def main() -> None:
     )
     scenario_request = {
         "dataset": "book",
-        "scenario": scenario.id,
+        "extensions": {"whatif": {"scenario": scenario.id}},
         "query": {
             "group_by": ["desk"],
             "measures": [

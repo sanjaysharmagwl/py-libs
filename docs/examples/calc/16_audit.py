@@ -6,9 +6,19 @@ from pylibs_calc.verify import verify
 
 REQUEST = {
     "dataset": "positions",
-    "what_if": [
-        {"kind": "shock", "column": "price", "op": "pct", "value": 5, "where": "sector == 'Tech'"}
-    ],
+    "extensions": {
+        "whatif": {
+            "steps": [
+                {
+                    "kind": "shock",
+                    "column": "price",
+                    "op": "pct",
+                    "value": 5,
+                    "where": "sector == 'Tech'",
+                }
+            ]
+        }
+    },
     "query": {
         "derive": [{"name": "notional", "expr": "price * quantity"}],
         "group_by": ["desk"],
@@ -34,6 +44,7 @@ print(f"- **same fingerprint again**: {same}, served from cache: {again.meta.cac
 plan = calc.explain(REQUEST)
 print(f"- **effective steps**: `{plan['steps']}`")
 print(f"- **lineage**: `{plan['lineage']}`")
+print(f"- **what-if lineage**: `{plan['extensions']['whatif']}`")
 print(f"- **output types**: `{plan['columns']}`")
 
 report = verify(calc, REQUEST)

@@ -15,7 +15,7 @@ These were measured with [`packages/calc/benchmarks/bench.py`](https://github.co
 | filter, 2 derived columns, 3-key group-by, 5 measures | 979 / 1069 | 552 / 602 |
 | filter, sort by a derived column, one page of 100 rows | 255 / 272 | 233 / 244 |
 | pivot: sector × region, 2 measures, totals | 456 / 545 | 361 / 409 |
-| scenario (100 overrides, a shock, a formula), then group-by | 989 / 1133 | 838 / 1001 |
+| what-if scenario (100 overrides, a shock, a formula), then group-by | 989 / 1133 | 838 / 1001 |
 | 3-level rollup of an exact-decimal product | 1247 / 1614 | 920 / 1053 |
 | next page of a cached aggregate (grid scrolling) | 0.6 / 0.7 | 0.5 / 0.6 |
 

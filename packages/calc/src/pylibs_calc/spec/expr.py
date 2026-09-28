@@ -39,7 +39,10 @@ FuncName = Literal[
     "ends_with",
 ]
 
-# (min, max) argument counts; None means unbounded.
+# Plugin function names: lower-case identifiers, never starting with an underscore.
+FUNC_NAME_PATTERN = r"^[a-z][a-z0-9_]*$"
+
+# (min, max) argument counts of the built-in functions; None means unbounded.
 FUNC_ARITY: dict[str, tuple[int, int | None]] = {
     "abs": (1, 1),
     "round": (1, 2),
@@ -179,12 +182,17 @@ class IfElse(Model):
 
 
 class Func(Model):
+    """A function call. Built-in names are :data:`FuncName`; any other name must be a function
+    registered by a plugin, which is checked when the expression is type-checked."""
+
     kind: Literal["func"] = "func"
-    name: FuncName
+    name: str = Field(pattern=FUNC_NAME_PATTERN)
     args: tuple[Expr, ...]
 
     @model_validator(mode="after")
     def _arity(self) -> Func:
+        if self.name not in FUNC_ARITY:
+            return self
         low, high = FUNC_ARITY[self.name]
         n = len(self.args)
         if n < low or (high is not None and n > high):

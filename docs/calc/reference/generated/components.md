@@ -2,7 +2,7 @@
 
 # Components
 
-A map of `pylibs-calc` generated from the code knowledge graph (graphify), built at commit `580901aa8505`. It lists every module with its public classes and functions, what each part imports and which components the rest of the code relies on most. For how the parts work together, read [Architecture](../../concepts/architecture.md).
+A map of `pylibs-calc` and its plugin packages (`plugin_*`, e.g. `pylibs-calc-whatif`), generated from the code knowledge graph (graphify), built at commit `1fd42018150c`. It lists every module with its public classes and functions, what each part imports and which components the rest of the code relies on most. For how the parts work together, read [Architecture](../../concepts/architecture.md).
 
 ## How the parts depend on each other
 
@@ -22,30 +22,46 @@ flowchart TB
   config[config]
   engine[engine]
   exec[exec]
+  ext[ext]
   integrations[integrations]
+  plugin_whatif[plugin_whatif]
+  plugins[plugins]
   result[result]
-  scenario[scenario]
   schema[schema]
+  testing[testing]
   verify[verify]
   adapters --> config
   adapters --> result
   adapters --> schema
   catalog --> schema
   compile --> config
-  compile --> schema
+  compile --> plugins
   engine --> cache
   engine --> catalog
   engine --> compile
   engine --> config
   engine --> exec
+  engine --> plugins
   engine --> result
-  engine --> scenario
   engine --> schema
+  ext --> cache
+  ext --> catalog
+  ext --> compile
+  ext --> engine
+  ext --> verify
   integrations --> adapters
   integrations --> config
   integrations --> engine
   integrations --> result
-  scenario --> config
+  plugin_whatif --> ext
+  plugin_whatif --> integrations
+  plugins --> catalog
+  plugins --> config
+  plugins --> integrations
+  plugins --> schema
+  testing --> config
+  testing --> engine
+  testing --> verify
   verify --> compile
   verify --> engine
   verify --> result
@@ -57,18 +73,18 @@ Ranked by how many other source files (tests included) call, reference or subcla
 
 | Component | Kind | Module | Used from files |
 | --- | --- | --- | --- |
-| [`CalcEngine`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/engine.py#L147) | class | `pylibs_calc.engine` | 15 |
-| [`SpecError`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L44) | class | `pylibs_calc.errors` | 15 |
-| [`CalcContext`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/config.py#L31) | class | `pylibs_calc.config` | 13 |
-| [`LType`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/dtypes.py#L68) | class | `pylibs_calc.dtypes` | 11 |
-| [`Catalog`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/catalog.py#L69) | class | `pylibs_calc.catalog` | 10 |
-| [`Kind`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/dtypes.py#L37) | class | `pylibs_calc.dtypes` | 10 |
-| [`InMemoryScenarioStore`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/store.py#L60) | class | `pylibs_calc.scenario.store` | 9 |
-| [`Limits`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/config.py#L14) | class | `pylibs_calc.config` | 9 |
-| [`Binary`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L125) | class | `pylibs_calc.spec.expr` | 8 |
-| [`ColRef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L62) | class | `pylibs_calc.spec.expr` | 8 |
-| [`Compare`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L138) | class | `pylibs_calc.spec.expr` | 7 |
-| [`IsNull`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L166) | class | `pylibs_calc.spec.expr` | 7 |
+| [`CalcEngine`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/engine.py#L534) | class | `pylibs_calc.engine` | 24 |
+| [`SpecError`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L44) | class | `pylibs_calc.errors` | 19 |
+| [`CalcContext`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/config.py#L28) | class | `pylibs_calc.config` | 18 |
+| [`LType`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/dtypes.py#L68) | class | `pylibs_calc.dtypes` | 16 |
+| [`Catalog`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/catalog.py#L69) | class | `pylibs_calc.catalog` | 15 |
+| [`Limits`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/config.py#L14) | class | `pylibs_calc.config` | 11 |
+| [`InMemoryScenarioStore`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/store.py#L61) | class | `pylibs_calc_whatif.scenario.store` | 9 |
+| [`Kind`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/dtypes.py#L37) | class | `pylibs_calc.dtypes` | 9 |
+| [`Binary`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L128) | class | `pylibs_calc.spec.expr` | 8 |
+| [`ColRef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L65) | class | `pylibs_calc.spec.expr` | 8 |
+| [`DatasetRef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L152) | class | `pylibs_calc.spec.query` | 8 |
+| [`LimitExceeded`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L79) | class | `pylibs_calc.errors` | 8 |
 
 ## Third-party dependencies by part
 
@@ -84,20 +100,23 @@ Ranked by how many other source files (tests included) call, reference or subcla
 | `engine` | `polars`, `pydantic` |
 | `errors` | — |
 | `exec` | `polars` |
-| `integrations` | `fastapi` |
+| `ext` | — |
+| `integrations` | `fastapi`, `pydantic` |
+| `plugin_whatif` | `fastapi`, `polars`, `pydantic`, `redis` |
+| `plugins` | `polars`, `pydantic` |
 | `result` | `polars`, `pydantic` |
-| `scenario` | `pydantic`, `redis` |
 | `schema` | `polars`, `pydantic` |
 | `spec` | `pydantic`, `pydantic_core` |
+| `testing` | `hypothesis`, `polars` |
 | `verify` | — |
 
-All third-party imports: `fastapi`, `polars`, `pydantic`, `pydantic_core`, `redis`.
+All third-party imports: `fastapi`, `hypothesis`, `polars`, `pydantic`, `pydantic_core`, `redis`.
 
 ## Modules
 
 ### `pylibs_calc`
 
-Embeddable what-if calculation engine on Polars. Filters, overrides, shocks,…
+Embeddable calculation engine on Polars, extensible with plugins. The core…
 
 Source: [`packages/calc/src/pylibs_calc/__init__.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/__init__.py)
 
@@ -115,17 +134,16 @@ Source: [`packages/calc/src/pylibs_calc/adapters/aggrid.py`](https://github.com/
 
 | Name | Kind | Summary |
 | --- | --- | --- |
-| [`ColumnVO`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L64) | class | Methods: `column`. |
-| [`SortModelItem`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L75) | class | — |
-| [`ServerSideRequest`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L80) | class | `IServerSideGetRowsRequest` as AG Grid sends it. |
-| [`RowsResponse`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L94) | class | What the datasource passes to `params.success(...)`. |
-| [`CellEdit`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L102) | class | The useful part of AG Grid's `CellEditRequestEvent`. |
-| [`Shape`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L112) | class | How to decorate result rows for the grid. |
-| [`AgGridAdapter`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L127) | class | Translate SSRM requests into engine requests and results back into grid rows.… Methods: `edit_to_override`, `filter_expr`, `measure`, `pivot_domain_request`, `rows`, `to_request`, `to_response`. |
-| [`encode_group_key`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L539) | function | — |
-| [`decode_group_key`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L543) | function | — |
+| [`ColumnVO`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L63) | class | Methods: `column`. |
+| [`SortModelItem`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L74) | class | — |
+| [`ServerSideRequest`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L79) | class | `IServerSideGetRowsRequest` as AG Grid sends it. |
+| [`RowsResponse`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L93) | class | What the datasource passes to `params.success(...)`. |
+| [`Shape`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L102) | class | How to decorate result rows for the grid. |
+| [`AgGridAdapter`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L117) | class | Translate SSRM requests into engine requests and results back into grid rows.… Methods: `filter_expr`, `measure`, `pivot_domain_request`, `rows`, `to_request`, `to_response`. |
+| [`encode_group_key`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L490) | function | — |
+| [`decode_group_key`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/adapters/aggrid.py#L494) | function | — |
 
-Imports: `pylibs_calc.config`, `pylibs_calc.dtypes`, `pylibs_calc.errors`, `pylibs_calc.result`, `pylibs_calc.schema`, `pylibs_calc.spec.expr`, `pylibs_calc.spec.query`, `pylibs_calc.spec.scenario`
+Imports: `pylibs_calc.config`, `pylibs_calc.dtypes`, `pylibs_calc.errors`, `pylibs_calc.result`, `pylibs_calc.schema`, `pylibs_calc.spec.expr`, `pylibs_calc.spec.query`
 
 ### `pylibs_calc.cache`
 
@@ -203,41 +221,20 @@ Source: [`packages/calc/src/pylibs_calc/compile/logical.py`](https://github.com/
 
 | Name | Kind | Summary |
 | --- | --- | --- |
-| [`LabeledStep`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L45) | class | A scenario step plus where it came from (for error paths and lineage). |
-| [`OverrideBatch`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L53) | class | Consecutive overrides, compacted: column -> {key tuple: new value}. Last write… |
-| [`ShockOp`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L61) | class | — |
-| [`FormulaDef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L72) | class | — |
-| [`LogicalMutations`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L80) | class | Methods: `empty`. |
-| [`effective_steps`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L95) | function | Drop `Disable` steps and the steps they disable. Sequence numbers start at… |
-| [`plan_mutations`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L124) | function | — |
-| [`flush`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L144) | function | — |
-| [`DerivePlan`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L328) | class | — |
-| [`HiddenAgg`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L337) | class | One aggregate over rows. `sum` of no values is null (SQL semantics). |
-| [`MeasurePlan`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L348) | class | — |
-| [`PostPlan`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L356) | class | — |
-| [`PivotPlan`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L363) | class | — |
-| [`SortSpec`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L374) | class | — |
-| [`LogicalQuery`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L381) | class | Methods: `value_names`. |
-| [`plan_query`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L404) | function | — |
-| [`budget`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L413) | function | — |
-| [`hidden`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L576) | function | — |
+| [`check_name`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L41) | function | Reject names reserved for the engine's internal columns. |
+| [`materializable`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L49) | function | The type a column computed by `typed` gets; always-null expressions have none. |
+| [`DerivePlan`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L67) | class | — |
+| [`HiddenAgg`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L76) | class | One aggregate over rows. `sum` of no values is null (SQL semantics). |
+| [`MeasurePlan`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L88) | class | — |
+| [`PostPlan`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L96) | class | — |
+| [`PivotPlan`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L103) | class | — |
+| [`SortSpec`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L114) | class | — |
+| [`LogicalQuery`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L121) | class | Methods: `value_names`. |
+| [`plan_query`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L144) | function | — |
+| [`budget`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L159) | function | — |
+| [`hidden`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/logical.py#L340) | function | — |
 
-Imports: `pylibs_calc.compile.validate`, `pylibs_calc.config`, `pylibs_calc.dtypes`, `pylibs_calc.errors`, `pylibs_calc.schema`, `pylibs_calc.spec.canonical`, `pylibs_calc.spec.expr`, `pylibs_calc.spec.query`, `pylibs_calc.spec.scenario`
-
-### `pylibs_calc.compile.mutations`
-
-Apply a :class:`LogicalMutations` plan to a Polars LazyFrame. Only edited…
-
-Source: [`packages/calc/src/pylibs_calc/compile/mutations.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/mutations.py)
-
-| Name | Kind | Summary |
-| --- | --- | --- |
-| [`apply_mutations`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/mutations.py#L21) | function | — |
-| [`edit_keys_frame`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/mutations.py#L33) | function | The distinct keys the overrides touch, typed like the dataset's key columns. |
-| [`dtype_of`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/mutations.py#L49) | function | — |
-| [`shocked_value`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/mutations.py#L108) | function | — |
-
-Imports: `pylibs_calc.compile.exprs`, `pylibs_calc.compile.logical`, `pylibs_calc.dtypes`
+Imports: `pylibs_calc.compile.validate`, `pylibs_calc.config`, `pylibs_calc.dtypes`, `pylibs_calc.errors`, `pylibs_calc.plugins`, `pylibs_calc.spec.expr`, `pylibs_calc.spec.query`
 
 ### `pylibs_calc.compile.query`
 
@@ -253,10 +250,10 @@ Source: [`packages/calc/src/pylibs_calc/compile/query.py`](https://github.com/sa
 | [`agg_frame`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/query.py#L73) | function | Aggregate at the group level (and every rollup level), including pivot columns. |
 | [`totals_frame`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/query.py#L80) | function | Pivot totals: the same measures without splitting by the pivot columns. |
 | [`domain_frame`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/query.py#L85) | function | — |
-| [`Finished`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/query.py#L173) | class | — |
-| [`finish_aggregate`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/query.py#L180) | function | — |
-| [`sort_frame`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/query.py#L211) | function | — |
-| [`pivot_label`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/query.py#L247) | function | — |
+| [`Finished`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/query.py#L180) | class | — |
+| [`finish_aggregate`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/query.py#L187) | function | — |
+| [`sort_frame`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/query.py#L218) | function | — |
+| [`pivot_label`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/query.py#L254) | function | — |
 
 Imports: `pylibs_calc.compile.exprs`, `pylibs_calc.compile.logical`, `pylibs_calc.config`, `pylibs_calc.dtypes`, `pylibs_calc.errors`
 
@@ -268,13 +265,13 @@ Source: [`packages/calc/src/pylibs_calc/compile/validate.py`](https://github.com
 
 | Name | Kind | Summary |
 | --- | --- | --- |
-| [`Typed`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/validate.py#L55) | class | An expression node with its result type and the type its operands are cast to. |
-| [`Budget`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/validate.py#L65) | class | — |
-| [`lit_type`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/validate.py#L71) | function | — |
-| [`check`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/validate.py#L79) | function | — |
-| [`check_predicate`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/validate.py#L91) | function | — |
+| [`Typed`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/validate.py#L60) | class | An expression node with its result type and the type its operands are cast to. |
+| [`Budget`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/validate.py#L71) | class | — |
+| [`lit_type`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/validate.py#L77) | function | — |
+| [`check`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/validate.py#L85) | function | — |
+| [`check_predicate`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/compile/validate.py#L102) | function | — |
 
-Imports: `pylibs_calc.dtypes`, `pylibs_calc.errors`, `pylibs_calc.spec.expr`
+Imports: `pylibs_calc.dtypes`, `pylibs_calc.errors`, `pylibs_calc.plugins`, `pylibs_calc.spec.expr`
 
 ### `pylibs_calc.config`
 
@@ -285,7 +282,7 @@ Source: [`packages/calc/src/pylibs_calc/config.py`](https://github.com/sanjaysha
 | Name | Kind | Summary |
 | --- | --- | --- |
 | [`Limits`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/config.py#L14) | class | Hard caps that keep a single request from exhausting a pod. Exceeding one is a… |
-| [`CalcContext`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/config.py#L31) | class | Who is asking, and what they may see. Supplied by the host service per request.… Methods: `digest`, `row_filter_node`. |
+| [`CalcContext`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/config.py#L28) | class | Who is asking, and what they may see. Supplied by the host service per request.… Methods: `digest`, `row_filter_node`. |
 
 Imports: `pylibs_calc.spec.canonical`, `pylibs_calc.spec.expr`
 
@@ -318,18 +315,20 @@ Imports: `pylibs_calc.errors`
 
 ### `pylibs_calc.engine`
 
-The calculation engine: resolve the dataset and scenario, plan, execute, cache,…
+The calculation engine: resolve the dataset and plugin transforms, plan,…
 
 Source: [`packages/calc/src/pylibs_calc/engine.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/engine.py)
 
 | Name | Kind | Summary |
 | --- | --- | --- |
-| [`EngineConfig`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/engine.py#L90) | class | Engine-wide settings. `authorize(ctx, action, scenario)` is called for… |
-| [`Side`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/engine.py#L110) | class | A dataset version with a scenario applied, as one caller sees it. Methods: `identity`. |
-| [`validation_error`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/engine.py#L131) | function | Turn a pydantic error into a :class:`SpecError` with a JSON-pointer path. |
-| [`CalcEngine`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/engine.py#L147) | class | Methods: `authorize`, `compare`, `distinct_values`, `evaluate_aggregate`, `explain`, `parse`, `run`, `scenarios`, `schema`, `validate_steps`. |
+| [`EngineConfig`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/engine.py#L84) | class | Engine-wide settings. `authorize(ctx, action, resource)` is called by plugins… |
+| [`AppliedTransform`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/engine.py#L105) | class | — |
+| [`View`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/engine.py#L112) | class | A dataset version as one caller sees it, after the requested plugin transforms. Methods: `canonical`, `identity`, `meta`, `transform`. |
+| [`validation_error`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/engine.py#L140) | function | Turn a pydantic error into a :class:`SpecError` with a JSON-pointer path. |
+| [`Kernel`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/engine.py#L156) | class | The engine's machinery, shared by the built-in calls and by plugin operations.… Methods: `aggregate`, `authorize`, `cache_key`, `collect`, `deadline`, `engine_name`, `evaluate_aggregate`, `finish`, `identity`, `leaf`, `meta`, `parse`, `plan_query`, `plan_view`, `query`, `resolve_view`, `slot`, `stage_rows`. |
+| [`CalcEngine`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/engine.py#L534) | class | Evaluate calculation requests over a… Methods: `authorize`, `cache`, `call`, `catalog`, `compare`, `config`, `distinct_values`, `explain`, `parse`, `plugin`, `registry`, `run`, `schema`, `versions`. |
 
-Imports: `pylibs_calc.cache`, `pylibs_calc.catalog`, `pylibs_calc.compile.compare`, `pylibs_calc.compile.exprs`, `pylibs_calc.compile.logical`, `pylibs_calc.compile.mutations`, `pylibs_calc.compile.query`, `pylibs_calc.compile.validate`, `pylibs_calc.config`, `pylibs_calc.dtypes`, `pylibs_calc.errors`, `pylibs_calc.exec`, `pylibs_calc.result`, `pylibs_calc.scenario.manager`, `pylibs_calc.scenario.model`, `pylibs_calc.scenario.store`, `pylibs_calc.schema`, `pylibs_calc.spec.canonical`, `pylibs_calc.spec.query`, `pylibs_calc.spec.scenario`
+Imports: `pylibs_calc.cache`, `pylibs_calc.catalog`, `pylibs_calc.compile.compare`, `pylibs_calc.compile.exprs`, `pylibs_calc.compile.logical`, `pylibs_calc.compile.query`, `pylibs_calc.compile.validate`, `pylibs_calc.config`, `pylibs_calc.dtypes`, `pylibs_calc.errors`, `pylibs_calc.exec`, `pylibs_calc.plugins`, `pylibs_calc.result`, `pylibs_calc.schema`, `pylibs_calc.spec.canonical`, `pylibs_calc.spec.query`
 
 ### `pylibs_calc.errors`
 
@@ -344,13 +343,12 @@ Source: [`packages/calc/src/pylibs_calc/errors.py`](https://github.com/sanjaysha
 | [`ComputeError`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L51) | class | Polars failed while evaluating a valid request (overflow, bad cast in the data). |
 | [`NotFound`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L58) | class | — |
 | [`DatasetNotFound`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L63) | class | — |
-| [`ScenarioNotFound`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L67) | class | — |
-| [`Forbidden`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L71) | class | — |
-| [`VersionConflict`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L76) | class | A scenario append used a stale `expected_version` or pinned mismatching… |
-| [`LimitExceeded`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L83) | class | — |
-| [`EngineBusy`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L88) | class | No execution slot became free before the queue timeout. |
-| [`CalcTimeout`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L95) | class | — |
-| [`join_path`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L100) | function | Append JSON-pointer segments to `base`. |
+| [`Forbidden`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L67) | class | — |
+| [`VersionConflict`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L72) | class | A write used a stale `expected_version`, or a request pinned mismatching… |
+| [`LimitExceeded`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L79) | class | — |
+| [`EngineBusy`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L84) | class | No execution slot became free before the queue timeout. |
+| [`CalcTimeout`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L91) | class | — |
+| [`join_path`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L96) | function | Append JSON-pointer segments to `base`. |
 
 ### `pylibs_calc.exec`
 
@@ -368,6 +366,14 @@ Source: [`packages/calc/src/pylibs_calc/exec.py`](https://github.com/sanjaysharm
 
 Imports: `pylibs_calc.errors`
 
+### `pylibs_calc.ext`
+
+The building blocks plugins use: typing, compiling and evaluating expressions.…
+
+Source: [`packages/calc/src/pylibs_calc/ext.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/ext.py)
+
+Imports: `pylibs_calc.cache`, `pylibs_calc.catalog`, `pylibs_calc.compile.exprs`, `pylibs_calc.compile.logical`, `pylibs_calc.compile.validate`, `pylibs_calc.dtypes`, `pylibs_calc.engine`, `pylibs_calc.errors`, `pylibs_calc.spec.base`, `pylibs_calc.spec.canonical`, `pylibs_calc.spec.expr`, `pylibs_calc.verify.reference`
+
 ### `pylibs_calc.integrations`
 
 Optional integrations with web frameworks (each needs its extra installed).
@@ -382,31 +388,48 @@ Source: [`packages/calc/src/pylibs_calc/integrations/fastapi.py`](https://github
 
 | Name | Kind | Summary |
 | --- | --- | --- |
-| [`create_router`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L59) | function | — |
-| [`body_limit`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L75) | function | — |
-| [`context`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L81) | function | — |
-| [`list_datasets`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L94) | function | — |
-| [`dataset_schema`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L100) | function | — |
-| [`run_query`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L106) | function | — |
-| [`run_compare`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L111) | function | — |
-| [`run_explain`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L115) | function | — |
-| [`distinct`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L119) | function | — |
-| [`run`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L122) | function | — |
-| [`aggrid_rows`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L141) | function | — |
-| [`run`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L144) | function | — |
-| [`aggrid_edit`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L162) | function | — |
-| [`run`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L167) | function | — |
-| [`list_scenarios`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L184) | function | — |
-| [`create_scenario`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L194) | function | — |
-| [`get_scenario`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L206) | function | — |
-| [`scenario_log`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L210) | function | — |
-| [`append_steps`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L221) | function | — |
-| [`fork_scenario`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L237) | function | — |
-| [`delete_scenario`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L250) | function | — |
-| [`verify_scenario`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L255) | function | — |
-| [`run`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L258) | function | — |
+| [`body_extensions`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L65) | function | The `extensions` of a request body; version 1 `scenario`/`what_if` keys… |
+| [`RouterKit`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L73) | class | What plugin route hooks get besides the router (see `Registry.add_routes`).… Methods: `call`, `json`, `result_response`. |
+| [`create_router`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L107) | function | — |
+| [`body_limit`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L123) | function | — |
+| [`context`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L129) | function | — |
+| [`list_datasets`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L141) | function | — |
+| [`dataset_schema`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L147) | function | — |
+| [`run_query`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L153) | function | — |
+| [`run_compare`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L158) | function | — |
+| [`run_explain`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L162) | function | — |
+| [`distinct`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L166) | function | — |
+| [`run`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L169) | function | — |
+| [`aggrid_rows`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L185) | function | — |
+| [`run`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L188) | function | — |
+| [`list_operations`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L203) | function | — |
+| [`call_operation`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/integrations/fastapi.py#L210) | function | — |
 
-Imports: `pylibs_calc.adapters.aggrid`, `pylibs_calc.config`, `pylibs_calc.engine`, `pylibs_calc.errors`, `pylibs_calc.result`
+Imports: `pylibs_calc.adapters.aggrid`, `pylibs_calc.config`, `pylibs_calc.engine`, `pylibs_calc.errors`, `pylibs_calc.result`, `pylibs_calc.spec.canonical`
+
+### `pylibs_calc.plugins`
+
+The plugin API: how analyses are built on top of the core calculation engine.…
+
+Source: [`packages/calc/src/pylibs_calc/plugins.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/plugins.py)
+
+| Name | Kind | Summary |
+| --- | --- | --- |
+| [`PluginError`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/plugins.py#L51) | class | A plugin is misconfigured (e.g. two plugins register the same name). |
+| [`FunctionDef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/plugins.py#L59) | class | A formula function, e.g. `clip(x, lo, hi)`. `typecheck` gets the argument… Methods: `arity_text`. |
+| [`AggregateDef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/plugins.py#L86) | class | A measure function, e.g. `{"fn": "p95", "of": "pnl"}`. `typecheck` maps the… |
+| [`BindContext`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/plugins.py#L107) | class | What a transform sees when a request is resolved (before the dataset is loaded). |
+| [`PlanContext`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/plugins.py#L117) | class | What a transform sees when it is planned against a dataset version. Methods: `collect`, `limits`, `numeric`, `registry`. |
+| [`TransformPlan`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/plugins.py#L144) | class | A validated transform, ready to run. The engine caches it (see :class:`Bound`).… Methods: `apply`, `apply_reference`, `explain`, `meta`, `size`. |
+| [`Bound`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/plugins.py#L175) | class | A transform block resolved for one request (cheap: no dataset access yet). The… Methods: `identity`, `plan`. |
+| [`TransformDef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/plugins.py#L195) | class | A dataset transform, enabled per request by `extensions[name]`. `model`… |
+| [`OperationDef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/plugins.py#L213) | class | A new engine call: `engine.call(name, request, ctx)` parses `request` with… |
+| [`Registry`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/plugins.py#L235) | class | Everything the engine's plugins registered. Names are unique across plugins. Methods: `add_aggregate`, `add_function`, `add_operation`, `add_routes`, `add_transform`. |
+| [`Plugin`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/plugins.py#L285) | class | Base class for plugins. Subclasses set `name` and `version` and override… Methods: `attach`, `register`. |
+| [`discover_plugins`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/plugins.py#L302) | function | Instantiate every installed plugin advertised under the `pylibs_calc.plugins`… |
+| [`build_registry`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/plugins.py#L315) | function | — |
+
+Imports: `pylibs_calc.catalog`, `pylibs_calc.config`, `pylibs_calc.dtypes`, `pylibs_calc.integrations.fastapi`, `pylibs_calc.schema`, `pylibs_calc.spec.query`
 
 ### `pylibs_calc.result`
 
@@ -418,72 +441,10 @@ Source: [`packages/calc/src/pylibs_calc/result.py`](https://github.com/sanjaysha
 | --- | --- | --- |
 | [`ColumnInfo`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/result.py#L19) | class | Methods: `of`. |
 | [`ResultMeta`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/result.py#L32) | class | Everything needed to reproduce, audit or cache a result. `fingerprint` is the… |
-| [`CalcResult`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/result.py#L59) | class | Methods: `to_arrow_ipc`, `to_dict`, `to_records`. |
-| [`json_safe`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/result.py#L90) | function | — |
+| [`CalcResult`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/result.py#L58) | class | Methods: `to_arrow_ipc`, `to_dict`, `to_records`. |
+| [`json_safe`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/result.py#L89) | function | — |
 
 Imports: `pylibs_calc.dtypes`, `pylibs_calc.spec.query`
-
-### `pylibs_calc.scenario`
-
-Saved what-if scenarios: append-only, hash-chained logs of steps over a dataset…
-
-Source: [`packages/calc/src/pylibs_calc/scenario/__init__.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/__init__.py)
-
-### `pylibs_calc.scenario.manager`
-
-Creating, editing, forking and auditing scenarios, with validation and…
-
-Source: [`packages/calc/src/pylibs_calc/scenario/manager.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/manager.py)
-
-| Name | Kind | Summary |
-| --- | --- | --- |
-| [`parse_steps`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/manager.py#L31) | function | — |
-| [`ScenarioManager`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/manager.py#L42) | class | Methods: `append`, `create`, `delete`, `fork`, `get`, `list`, `log`, `verify`. |
-
-Imports: `pylibs_calc.config`, `pylibs_calc.errors`, `pylibs_calc.scenario.model`, `pylibs_calc.scenario.store`, `pylibs_calc.spec.query`, `pylibs_calc.spec.scenario`
-
-### `pylibs_calc.scenario.model`
-
-Scenario records: an append-only log of steps over a pinned dataset version.…
-
-Source: [`packages/calc/src/pylibs_calc/scenario/model.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/model.py)
-
-| Name | Kind | Summary |
-| --- | --- | --- |
-| [`Scenario`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/model.py#L21) | class | Methods: `ref`. |
-| [`LogEntry`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/model.py#L42) | class | — |
-| [`now`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/model.py#L54) | function | — |
-| [`genesis_hash`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/model.py#L58) | function | — |
-| [`entry_hash`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/model.py#L71) | function | — |
-| [`make_entries`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/model.py#L85) | function | — |
-| [`verify_chain`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/model.py#L114) | function | True if the entries hash to the scenario's head and are numbered 1..version. |
-
-Imports: `pylibs_calc.spec.canonical`, `pylibs_calc.spec.query`, `pylibs_calc.spec.scenario`
-
-### `pylibs_calc.scenario.redis_store`
-
-Redis-backed scenario store: shared by every replica of a service. Needs the…
-
-Source: [`packages/calc/src/pylibs_calc/scenario/redis_store.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/redis_store.py)
-
-| Name | Kind | Summary |
-| --- | --- | --- |
-| [`RedisScenarioStore`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/redis_store.py#L53) | class | Methods: `append`, `create`, `delete`, `entries`, `get`, `list`. |
-
-Imports: `pylibs_calc.errors`, `pylibs_calc.scenario.model`
-
-### `pylibs_calc.scenario.store`
-
-Scenario storage: the protocol, and a thread-safe in-memory implementation.…
-
-Source: [`packages/calc/src/pylibs_calc/scenario/store.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/store.py)
-
-| Name | Kind | Summary |
-| --- | --- | --- |
-| [`ScenarioStore`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/store.py#L20) | class | Methods: `append`, `create`, `delete`, `entries`, `get`, `list`. |
-| [`InMemoryScenarioStore`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/scenario/store.py#L60) | class | Process-local store for tests and single-replica services. Methods: `append`, `create`, `delete`, `entries`, `get`, `list`. |
-
-Imports: `pylibs_calc.errors`, `pylibs_calc.scenario.model`
 
 ### `pylibs_calc.schema`
 
@@ -501,7 +462,7 @@ Imports: `pylibs_calc.dtypes`, `pylibs_calc.errors`
 
 ### `pylibs_calc.spec`
 
-The calculation spec: expression tree, formula language, scenario steps and…
+The calculation spec: expression tree, formula language, queries and requests.
 
 Source: [`packages/calc/src/pylibs_calc/spec/__init__.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/__init__.py)
 
@@ -523,10 +484,12 @@ Source: [`packages/calc/src/pylibs_calc/spec/canonical.py`](https://github.com/s
 
 | Name | Kind | Summary |
 | --- | --- | --- |
-| [`upgrade`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/canonical.py#L26) | function | Bring a raw request dict up to the current `spec_version`. |
-| [`to_canonical`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/canonical.py#L41) | function | JSON-ready canonical form of a model, or of plain data containing models. |
-| [`canonical_json`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/canonical.py#L52) | function | — |
-| [`fingerprint`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/canonical.py#L58) | function | SHA-256 of the canonical JSON, as hex. |
+| [`block`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/canonical.py#L36) | function | — |
+| [`request_version`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/canonical.py#L63) | function | The request's `spec_version`; a request without one is version 1 if it uses… |
+| [`upgrade`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/canonical.py#L80) | function | Bring a raw request dict up to the current `spec_version`. |
+| [`to_canonical`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/canonical.py#L95) | function | JSON-ready canonical form of a model, or of plain data containing models. |
+| [`canonical_json`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/canonical.py#L106) | function | — |
+| [`fingerprint`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/canonical.py#L112) | function | SHA-256 of the canonical JSON, as hex. |
 
 Imports: `pylibs_calc.errors`
 
@@ -538,23 +501,23 @@ Source: [`packages/calc/src/pylibs_calc/spec/expr.py`](https://github.com/sanjay
 
 | Name | Kind | Summary |
 | --- | --- | --- |
-| [`ColRef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L62) | class | — |
-| [`Lit`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L67) | class | A literal. `num` is an exact decimal written as a string, e.g. `"1.05"`. |
-| [`Binary`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L125) | class | — |
-| [`Unary`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L132) | class | — |
-| [`Compare`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L138) | class | — |
-| [`Logic`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L145) | class | — |
-| [`InList`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L151) | class | `arg in (values...)`; the values are non-null literals. |
-| [`IsNull`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L166) | class | — |
-| [`IfElse`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L172) | class | `then if cond else otherwise`; a null condition picks `otherwise`. |
-| [`Func`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L181) | class | — |
-| [`Cast`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L196) | class | — |
-| [`col`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L238) | function | — |
-| [`children`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L264) | function | — |
-| [`walk`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L279) | function | — |
-| [`columns`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L287) | function | Names of all columns an expression reads. |
-| [`replace_columns`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L292) | function | Substitute column references (used to inline formula definitions). |
-| [`depth`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L321) | function | — |
+| [`ColRef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L65) | class | — |
+| [`Lit`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L70) | class | A literal. `num` is an exact decimal written as a string, e.g. `"1.05"`. |
+| [`Binary`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L128) | class | — |
+| [`Unary`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L135) | class | — |
+| [`Compare`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L141) | class | — |
+| [`Logic`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L148) | class | — |
+| [`InList`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L154) | class | `arg in (values...)`; the values are non-null literals. |
+| [`IsNull`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L169) | class | — |
+| [`IfElse`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L175) | class | `then if cond else otherwise`; a null condition picks `otherwise`. |
+| [`Func`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L184) | class | A function call. Built-in names are :data:`FuncName`; any other name must be a… |
+| [`Cast`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L204) | class | — |
+| [`col`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L246) | function | — |
+| [`children`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L272) | function | — |
+| [`walk`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L287) | function | — |
+| [`columns`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L295) | function | Names of all columns an expression reads. |
+| [`replace_columns`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L300) | function | Substitute column references (used to inline formula definitions). |
+| [`depth`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L329) | function | — |
 
 Imports: `pylibs_calc.dtypes`, `pylibs_calc.spec.base`
 
@@ -566,8 +529,8 @@ Source: [`packages/calc/src/pylibs_calc/spec/formula.py`](https://github.com/san
 
 | Name | Kind | Summary |
 | --- | --- | --- |
-| [`parse_formula`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/formula.py#L70) | function | Parse a formula into an expression tree, or raise :class:`SpecError`. |
-| [`to_formula`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/formula.py#L316) | function | Render an expression tree as formula text (for display, lineage and error… |
+| [`parse_formula`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/formula.py#L72) | function | Parse a formula into an expression tree, or raise :class:`SpecError`. |
+| [`to_formula`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/formula.py#L318) | function | Render an expression tree as formula text (for display, lineage and error… |
 
 Imports: `pylibs_calc.errors`, `pylibs_calc.spec.expr`
 
@@ -579,36 +542,40 @@ Source: [`packages/calc/src/pylibs_calc/spec/query.py`](https://github.com/sanja
 
 | Name | Kind | Summary |
 | --- | --- | --- |
-| [`Derive`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L28) | class | A new column for this query only. With `where`, rows that don't match get… |
-| [`Measure`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L43) | class | An aggregate per group. `where` works like SQL `FILTER (WHERE ...)`: it… |
-| [`PostAgg`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L70) | class | A value computed from measures (and group columns) after aggregation, e.g. a… |
-| [`Pivot`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L77) | class | Split measures into one column per combination of `on` values. Result columns… |
-| [`SortKey`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L99) | class | — |
-| [`Page`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L105) | class | — |
-| [`Query`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L110) | class | Methods: `aggregated`. |
-| [`DatasetRef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L144) | class | A dataset and, optionally, a pinned version (default: the latest registered). |
-| [`ScenarioRef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L156) | class | A saved scenario and, optionally, a version (log length) to read it at. |
-| [`Options`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L168) | class | Execution options. `deterministic` makes float sums independent of thread… |
-| [`CalcRequest`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L183) | class | Run `query` over `dataset` with a saved `scenario` and extra `what_if`… |
-| [`CompareRequest`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L194) | class | Run the same query on two sides and join them: `m`, `m__base`,… |
+| [`Derive`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L29) | class | A new column for this query only. With `where`, rows that don't match get… |
+| [`Measure`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L44) | class | An aggregate per group. `where` works like SQL `FILTER (WHERE ...)`: it… |
+| [`PostAgg`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L78) | class | A value computed from measures (and group columns) after aggregation, e.g. a… |
+| [`Pivot`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L85) | class | Split measures into one column per combination of `on` values. Result columns… |
+| [`SortKey`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L107) | class | — |
+| [`Page`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L113) | class | — |
+| [`Query`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L118) | class | Methods: `aggregated`. |
+| [`DatasetRef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L152) | class | A dataset and, optionally, a pinned version (default: the latest registered). |
+| [`Options`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L164) | class | Execution options. `deterministic` makes float sums independent of thread… |
+| [`CalcRequest`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L182) | class | Run `query` over `dataset`, after the plugin transforms named in… |
+| [`Side`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L192) | class | The base side of a comparison: its own `extensions` and, optionally, another… |
+| [`CompareRequest`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L200) | class | Run the same query on two sides and join them: `m`, `m__base`,… |
 
-Imports: `pylibs_calc.dtypes`, `pylibs_calc.spec.base`, `pylibs_calc.spec.expr`, `pylibs_calc.spec.scenario`
+Imports: `pylibs_calc.dtypes`, `pylibs_calc.spec.base`, `pylibs_calc.spec.expr`
 
-### `pylibs_calc.spec.scenario`
+### `pylibs_calc.testing`
 
-Scenario steps: what-if changes that keep every row of the dataset. A scenario…
+Hypothesis strategies for fuzzing the engine, and plugins, against the…
 
-Source: [`packages/calc/src/pylibs_calc/spec/scenario.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/scenario.py)
+Source: [`packages/calc/src/pylibs_calc/testing.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/testing.py)
 
 | Name | Kind | Summary |
 | --- | --- | --- |
-| [`Edit`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/scenario.py#L21) | class | Set one cell. `key` holds a value for every key column of the dataset. |
-| [`Override`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/scenario.py#L29) | class | Set cells to values. Within one step, the last edit of a (key, column) wins. |
-| [`Shock`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/scenario.py#L36) | class | Change a column in bulk: `add` a value, `mul` by a factor or move by… Methods: `factor`. |
-| [`Formula`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/scenario.py#L63) | class | Define (or redefine) a derived column that is recomputed from the current… |
-| [`Disable`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/scenario.py#L71) | class | Undo an earlier step of the same scenario by its sequence number. |
+| [`frames`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/testing.py#L55) | function | A random table: key `k`, groups `g1` (string or categorical) and `g2`,… |
+| [`column`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/testing.py#L60) | function | — |
+| [`dec_literal`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/testing.py#L88) | function | A decimal literal with one place, e.g. `"-12.5"`. |
+| [`dec_expr`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/testing.py#L94) | function | A formula with a decimal result. |
+| [`float_expr`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/testing.py#L109) | function | A formula with a float result. |
+| [`predicate`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/testing.py#L119) | function | A true/false/null condition. |
+| [`measures`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/testing.py#L140) | function | One to four measures `m0`, `m1`... with every built-in function. |
+| [`queries`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/testing.py#L163) | function | A random query over :func:`frames` columns: leaf, aggregated, rollup or pivot. |
+| [`assert_matches_reference`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/testing.py#L207) | function | — |
 
-Imports: `pylibs_calc.dtypes`, `pylibs_calc.spec.base`, `pylibs_calc.spec.expr`
+Imports: `pylibs_calc.config`, `pylibs_calc.engine`, `pylibs_calc.verify`
 
 ### `pylibs_calc.verify`
 
@@ -644,22 +611,217 @@ Source: [`packages/calc/src/pylibs_calc/verify/reference.py`](https://github.com
 
 | Name | Kind | Summary |
 | --- | --- | --- |
-| [`convert`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L59) | function | Convert a value between logical types exactly as the typing rules say. |
-| [`lit_value`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L72) | function | — |
-| [`evaluate`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L94) | function | — |
-| [`apply_mutations`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L299) | function | — |
-| [`shock`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L320) | function | — |
-| [`ReferenceResult`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L337) | class | — |
-| [`rows_stage`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L344) | function | — |
-| [`run_query`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L362) | function | Evaluate a query plan; returns every row (sorted, unpaged) plus the page slice… |
-| [`aggregate_levels`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L386) | function | — |
-| [`hidden_agg`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L416) | function | — |
-| [`pivot`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L438) | function | — |
-| [`sort_aggregate`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L491) | function | — |
-| [`sort_rows`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L509) | function | — |
-| [`compare`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L510) | function | — |
-| [`compare_rows`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L529) | function | Full outer join on the plan's keys (nulls match), then the typed delta columns. |
-| [`values_match`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L558) | function | — |
-| [`diff_rows`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L570) | function | — |
+| [`convert`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L51) | function | Convert a value between logical types exactly as the typing rules say. |
+| [`lit_value`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L64) | function | — |
+| [`evaluate`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L86) | function | — |
+| [`plugin_value`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L247) | function | Coerce a plugin's reference result to its declared type, as the Polars cast… |
+| [`ReferenceResult`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L310) | class | — |
+| [`rows_stage`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L317) | function | — |
+| [`run_query`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L335) | function | Evaluate a query plan; returns every row (sorted, unpaged) plus the page slice… |
+| [`aggregate_levels`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L359) | function | — |
+| [`hidden_agg`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L389) | function | — |
+| [`pivot`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L413) | function | — |
+| [`sort_aggregate`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L466) | function | — |
+| [`sort_rows`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L484) | function | — |
+| [`compare`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L485) | function | — |
+| [`compare_rows`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L504) | function | Full outer join on the plan's keys (nulls match), then the typed delta columns. |
+| [`values_match`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L533) | function | — |
+| [`diff_rows`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/verify/reference.py#L545) | function | — |
 
 Imports: `pylibs_calc.compile.compare`, `pylibs_calc.compile.logical`, `pylibs_calc.compile.query`, `pylibs_calc.compile.validate`, `pylibs_calc.dtypes`, `pylibs_calc.spec.expr`
+
+### `pylibs_calc_whatif`
+
+What-if analysis for pylibs-calc, as a plugin. :: from pylibs_calc import…
+
+Source: [`packages/calc_whatif/src/pylibs_calc_whatif/__init__.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/__init__.py)
+
+### `pylibs_calc_whatif.aggrid`
+
+AG Grid cell edits as what-if overrides (grid set up with `readOnlyEdit:…
+
+Source: [`packages/calc_whatif/src/pylibs_calc_whatif/aggrid.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/aggrid.py)
+
+| Name | Kind | Summary |
+| --- | --- | --- |
+| [`CellEdit`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/aggrid.py#L16) | class | The useful part of AG Grid's `CellEditRequestEvent`. |
+| [`edit_to_override`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/aggrid.py#L27) | function | Turn a grid cell edit into an override step (leaf rows only). |
+
+Imports: `pylibs_calc`, `pylibs_calc.ext`, `pylibs_calc_whatif.spec`
+
+### `pylibs_calc_whatif.errors`
+
+Errors raised by the what-if plugin.
+
+Source: [`packages/calc_whatif/src/pylibs_calc_whatif/errors.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/errors.py)
+
+| Name | Kind | Summary |
+| --- | --- | --- |
+| [`ScenarioNotFound`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/errors.py#L6) | class | — |
+
+Imports: `pylibs_calc`
+
+### `pylibs_calc_whatif.planner`
+
+Planning what-if steps: validate them against a dataset schema into…
+
+Source: [`packages/calc_whatif/src/pylibs_calc_whatif/planner.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/planner.py)
+
+| Name | Kind | Summary |
+| --- | --- | --- |
+| [`WhatIfLimits`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/planner.py#L40) | class | Caps on what-if work; exceeding one is a 413. |
+| [`LabeledStep`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/planner.py#L49) | class | A scenario step plus where it came from (for error paths and lineage). |
+| [`OverrideBatch`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/planner.py#L57) | class | Consecutive overrides, compacted: column -> {key tuple: new value}. Last write… |
+| [`ShockOp`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/planner.py#L65) | class | — |
+| [`FormulaDef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/planner.py#L76) | class | — |
+| [`LogicalMutations`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/planner.py#L84) | class | Methods: `empty`. |
+| [`effective_steps`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/planner.py#L99) | function | Drop `Disable` steps and the steps they disable. Sequence numbers start at… |
+| [`plan_mutations`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/planner.py#L128) | function | — |
+| [`flush`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/planner.py#L158) | function | — |
+
+Imports: `pylibs_calc`, `pylibs_calc.ext`, `pylibs_calc_whatif.spec`
+
+### `pylibs_calc_whatif.plugin`
+
+The `whatif` plugin: a dataset transform plus saved scenarios, routes and…
+
+Source: [`packages/calc_whatif/src/pylibs_calc_whatif/plugin.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/plugin.py)
+
+| Name | Kind | Summary |
+| --- | --- | --- |
+| [`WhatIfPlugin`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/plugin.py#L46) | class | What-if analysis: override cells, shock columns and add formula columns, ad hoc… Methods: `attach`, `engine`, `register`, `scenarios`, `validate_steps`. |
+| [`WhatIfBound`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/plugin.py#L171) | class | A `whatif` block resolved for one request: the saved scenario's log plus… Methods: `identity`, `plan`. |
+| [`WhatIfPlan`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/plugin.py#L231) | class | Methods: `apply`, `apply_reference`, `explain`, `meta`, `size`. |
+
+Imports: `pylibs_calc`, `pylibs_calc.ext`, `pylibs_calc.integrations.fastapi`, `pylibs_calc_whatif.planner`, `pylibs_calc_whatif.polars`, `pylibs_calc_whatif.reference`, `pylibs_calc_whatif.scenario.manager`, `pylibs_calc_whatif.scenario.model`, `pylibs_calc_whatif.scenario.store`, `pylibs_calc_whatif.spec`
+
+### `pylibs_calc_whatif.polars`
+
+Apply a :class:`LogicalMutations` plan to a Polars LazyFrame. Only edited…
+
+Source: [`packages/calc_whatif/src/pylibs_calc_whatif/polars.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/polars.py)
+
+| Name | Kind | Summary |
+| --- | --- | --- |
+| [`apply_mutations`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/polars.py#L28) | function | — |
+| [`edit_keys_frame`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/polars.py#L40) | function | The distinct keys the overrides touch, typed like the dataset's key columns. |
+| [`dtype_of`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/polars.py#L56) | function | — |
+| [`shocked_value`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/polars.py#L115) | function | — |
+
+Imports: `pylibs_calc.ext`, `pylibs_calc_whatif.planner`
+
+### `pylibs_calc_whatif.reference`
+
+Pure-Python reference for what-if steps: row at a time, exact `Decimal`…
+
+Source: [`packages/calc_whatif/src/pylibs_calc_whatif/reference.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/reference.py)
+
+| Name | Kind | Summary |
+| --- | --- | --- |
+| [`apply_mutations`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/reference.py#L16) | function | — |
+| [`shock`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/reference.py#L37) | function | — |
+
+Imports: `pylibs_calc.ext`, `pylibs_calc_whatif.planner`
+
+### `pylibs_calc_whatif.routes`
+
+What-if routes for the FastAPI router: scenarios and AG Grid cell edits. Added…
+
+Source: [`packages/calc_whatif/src/pylibs_calc_whatif/routes.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/routes.py)
+
+| Name | Kind | Summary |
+| --- | --- | --- |
+| [`add_routes`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/routes.py#L22) | function | — |
+| [`aggrid_edit`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/routes.py#L30) | function | — |
+| [`run`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/routes.py#L35) | function | — |
+| [`list_scenarios`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/routes.py#L52) | function | — |
+| [`create_scenario`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/routes.py#L62) | function | — |
+| [`get_scenario`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/routes.py#L74) | function | — |
+| [`scenario_log`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/routes.py#L78) | function | — |
+| [`append_steps`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/routes.py#L89) | function | — |
+| [`fork_scenario`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/routes.py#L105) | function | — |
+| [`delete_scenario`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/routes.py#L118) | function | — |
+| [`verify_scenario`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/routes.py#L123) | function | — |
+| [`run`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/routes.py#L126) | function | — |
+
+Imports: `pylibs_calc`, `pylibs_calc.integrations.fastapi`, `pylibs_calc_whatif.aggrid`, `pylibs_calc_whatif.plugin`
+
+### `pylibs_calc_whatif.scenario`
+
+Saved what-if scenarios: append-only, hash-chained logs of steps over a dataset…
+
+Source: [`packages/calc_whatif/src/pylibs_calc_whatif/scenario/__init__.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/__init__.py)
+
+### `pylibs_calc_whatif.scenario.manager`
+
+Creating, editing, forking and auditing scenarios, with validation and…
+
+Source: [`packages/calc_whatif/src/pylibs_calc_whatif/scenario/manager.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/manager.py)
+
+| Name | Kind | Summary |
+| --- | --- | --- |
+| [`parse_steps`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/manager.py#L26) | function | — |
+| [`ScenarioManager`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/manager.py#L35) | class | Creating, editing, forking and auditing the scenarios of one… Methods: `append`, `create`, `delete`, `fork`, `get`, `list`, `log`, `verify`. |
+
+Imports: `pylibs_calc`, `pylibs_calc.ext`, `pylibs_calc_whatif.errors`, `pylibs_calc_whatif.planner`, `pylibs_calc_whatif.scenario.model`, `pylibs_calc_whatif.scenario.store`, `pylibs_calc_whatif.spec`
+
+### `pylibs_calc_whatif.scenario.model`
+
+Scenario records: an append-only log of steps over a pinned dataset version.…
+
+Source: [`packages/calc_whatif/src/pylibs_calc_whatif/scenario/model.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/model.py)
+
+| Name | Kind | Summary |
+| --- | --- | --- |
+| [`Scenario`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/model.py#L21) | class | Methods: `ref`. |
+| [`LogEntry`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/model.py#L42) | class | — |
+| [`now`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/model.py#L54) | function | — |
+| [`genesis_hash`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/model.py#L58) | function | — |
+| [`entry_hash`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/model.py#L71) | function | — |
+| [`make_entries`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/model.py#L85) | function | — |
+| [`verify_chain`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/model.py#L114) | function | True if the entries hash to the scenario's head and are numbered 1..version. |
+
+Imports: `pylibs_calc`, `pylibs_calc_whatif.spec`
+
+### `pylibs_calc_whatif.scenario.redis_store`
+
+Redis-backed scenario store: shared by every replica of a service. Needs the…
+
+Source: [`packages/calc_whatif/src/pylibs_calc_whatif/scenario/redis_store.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/redis_store.py)
+
+| Name | Kind | Summary |
+| --- | --- | --- |
+| [`RedisScenarioStore`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/redis_store.py#L54) | class | Methods: `append`, `create`, `delete`, `entries`, `get`, `list`. |
+
+Imports: `pylibs_calc`, `pylibs_calc_whatif.errors`, `pylibs_calc_whatif.scenario.model`
+
+### `pylibs_calc_whatif.scenario.store`
+
+Scenario storage: the protocol, and a thread-safe in-memory implementation.…
+
+Source: [`packages/calc_whatif/src/pylibs_calc_whatif/scenario/store.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/store.py)
+
+| Name | Kind | Summary |
+| --- | --- | --- |
+| [`ScenarioStore`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/store.py#L21) | class | Methods: `append`, `create`, `delete`, `entries`, `get`, `list`. |
+| [`InMemoryScenarioStore`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/store.py#L61) | class | Process-local store for tests and single-replica services. Methods: `append`, `create`, `delete`, `entries`, `get`, `list`. |
+
+Imports: `pylibs_calc`, `pylibs_calc_whatif.errors`, `pylibs_calc_whatif.scenario.model`
+
+### `pylibs_calc_whatif.spec`
+
+What-if request spec: scenario steps and the `extensions.whatif` block. Steps…
+
+Source: [`packages/calc_whatif/src/pylibs_calc_whatif/spec.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/spec.py)
+
+| Name | Kind | Summary |
+| --- | --- | --- |
+| [`Edit`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/spec.py#L21) | class | Set one cell. `key` holds a value for every key column of the dataset. |
+| [`Override`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/spec.py#L29) | class | Set cells to values. Within one step, the last edit of a (key, column) wins. |
+| [`Shock`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/spec.py#L36) | class | Change a column in bulk: `add` a value, `mul` by a factor or move by… Methods: `factor`. |
+| [`Formula`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/spec.py#L63) | class | Define (or redefine) a derived column that is recomputed from the current… |
+| [`Disable`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/spec.py#L71) | class | Undo an earlier step of the same scenario by its sequence number. |
+| [`ScenarioRef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/spec.py#L81) | class | A saved scenario and, optionally, a version (log length) to read it at. |
+| [`WhatIf`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/spec.py#L93) | class | The `extensions.whatif` block of a request: a saved `scenario` (optional)… |
+
+Imports: `pylibs_calc.ext`

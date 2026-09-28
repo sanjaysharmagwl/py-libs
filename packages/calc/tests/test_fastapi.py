@@ -81,75 +81,6 @@ def test_body_limit(client: TestClient) -> None:
     assert response.status_code == 413
 
 
-def test_scenario_lifecycle(client: TestClient) -> None:
-    created = client.post(
-        "/calc/scenarios", json={"dataset": "pos", "name": "s"}, headers={"X-User": "ana"}
-    )
-    assert created.status_code == 201
-    scenario = created.json()
-    assert scenario["owner"] == "ana"
-    url = f"/calc/scenarios/{scenario['id']}"
-    step = {"kind": "shock", "column": "qty", "op": "add", "value": 1}
-    appended = client.post(
-        f"{url}/steps",
-        json={"steps": [step], "expected_version": 0},
-        headers={"Idempotency-Key": "k1"},
-    )
-    assert appended.json()["version"] == 1
-    retried = client.post(
-        f"{url}/steps",
-        json={"steps": [step], "expected_version": 0},
-        headers={"Idempotency-Key": "k1"},
-    )
-    assert retried.json()["version"] == 1
-    stale = client.post(f"{url}/steps", json={"steps": [step], "expected_version": 0})
-    assert stale.status_code == 409 and stale.json()["detail"]["code"] == "version_conflict"
-    assert len(client.get(f"{url}/log").json()) == 1
-    assert client.get(f"{url}/verify").json()["intact"] is True
-    fork = client.post(f"{url}/fork", json={"name": "copy"})
-    assert fork.status_code == 201 and fork.json()["version"] == 1
-    run = client.post(
-        "/calc/query",
-        json={"dataset": "pos", "scenario": scenario["id"], "query": {"filter": "id == 1"}},
-    )
-    assert run.json()["rows"][0]["qty"] == 11
-    assert client.delete(url).status_code == 204
-    assert client.get(url).status_code == 404
-    assert [s["name"] for s in client.get("/calc/scenarios", params={"dataset": "pos"}).json()] == [
-        "copy"
-    ]
-
-
-def test_aggrid_rows_and_edit(client: TestClient) -> None:
-    scenario = client.post("/calc/scenarios", json={"dataset": "pos", "name": "grid"}).json()
-    edit = client.post(
-        "/calc/aggrid/edit",
-        json={
-            "scenario": scenario["id"],
-            "expected_version": 0,
-            "edit": {"colId": "qty", "newValue": "99", "data": {"id": 1}},
-        },
-    )
-    assert edit.status_code == 200 and edit.json()["version"] == 1
-    response = client.post(
-        "/calc/aggrid/rows",
-        json={
-            "dataset": "pos",
-            "scenario": scenario["id"],
-            "request": {
-                "startRow": 0,
-                "endRow": 50,
-                "rowGroupCols": [{"id": "desk", "field": "desk"}],
-                "valueCols": [{"id": "qty", "field": "qty", "aggFunc": "sum"}],
-                "groupKeys": [],
-            },
-        },
-    )
-    data = response.json()
-    assert data["rowCount"] == 4
-    assert next(r for r in data["rowData"] if r["desk"] == "rates")["qty"] == 119
-
-
 def test_schema_distinct_and_explain(client: TestClient) -> None:
     schema = client.get("/calc/datasets/pos/schema").json()
     assert schema["key_columns"] == ["id"]
@@ -163,10 +94,13 @@ def test_schema_distinct_and_explain(client: TestClient) -> None:
     assert "plan" in explained and len(explained["fingerprint"]) == 64
     compared = client.post(
         "/calc/compare",
-        json={
-            "dataset": "pos",
-            "what_if": [{"kind": "shock", "column": "qty", "op": "mul", "value": 2}],
-            "query": {"measures": [{"name": "q", "fn": "sum", "of": "qty"}]},
-        },
+        json={"dataset": "pos", "query": {"measures": [{"name": "q", "fn": "sum", "of": "qty"}]}},
     ).json()
-    assert compared["rows"] == [{"q": 420, "q__base": 210, "q__delta": 210, "q__pct": 100.0}]
+    assert compared["rows"] == [{"q": 210, "q__base": 210, "q__delta": 0, "q__pct": 0.0}]
+
+
+def test_core_router_has_no_plugin_routes(client: TestClient) -> None:
+    assert client.get("/calc/scenarios").status_code == 404
+    assert client.get("/calc/operations").json() == []
+    unknown = client.post("/calc/operations/nope", json={})
+    assert unknown.status_code == 400 and unknown.json()["detail"]["code"] == "unknown_operation"

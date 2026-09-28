@@ -11,6 +11,7 @@ resolution-markers = [
 [manifest]
 members = [
     "pylibs-calc",
+    "pylibs-calc-whatif",
     "pylibs-core",
     "pylibs-utils",
 ]
@@ -1527,7 +1528,7 @@ wheels = [
 
 [[package]]
 name = "pylibs-calc"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/calc" }
 dependencies = [
     { name = "polars" },
@@ -1539,17 +1540,45 @@ dependencies = [
 fastapi = [
     { name = "fastapi" },
 ]
+testing = [
+    { name = "hypothesis" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.115" },
+    { name = "hypothesis", marker = "extra == 'testing'", specifier = ">=6.100" },
+    { name = "polars", specifier = ">=1.44,<2" },
+    { name = "pydantic", specifier = ">=2.7" },
+    { name = "typing-extensions", specifier = ">=4.7" },
+]
+provides-extras = ["fastapi", "testing"]
+
+[[package]]
+name = "pylibs-calc-whatif"
+version = "0.1.0"
+source = { editable = "packages/calc_whatif" }
+dependencies = [
+    { name = "polars" },
+    { name = "pydantic" },
+    { name = "pylibs-calc" },
+]
+
+[package.optional-dependencies]
+fastapi = [
+    { name = "pylibs-calc", extra = ["fastapi"] },
+]
 redis = [
     { name = "redis" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.115" },
     { name = "polars", specifier = ">=1.44,<2" },
     { name = "pydantic", specifier = ">=2.7" },
+    { name = "pylibs-calc", editable = "packages/calc" },
+    { name = "pylibs-calc", extras = ["fastapi"], marker = "extra == 'fastapi'", editable = "packages/calc" },
     { name = "redis", marker = "extra == 'redis'", specifier = ">=5" },
-    { name = "typing-extensions", specifier = ">=4.7" },
 ]
 provides-extras = ["fastapi", "redis"]
 

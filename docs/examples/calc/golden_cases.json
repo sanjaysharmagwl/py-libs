@@ -121,14 +121,18 @@
     "kind": "run",
     "request": {
       "dataset": "positions",
-      "what_if": [
-        {
-          "kind": "shock",
-          "column": "price",
-          "op": "pct",
-          "value": 5
+      "extensions": {
+        "whatif": {
+          "steps": [
+            {
+              "kind": "shock",
+              "column": "price",
+              "op": "pct",
+              "value": 5
+            }
+          ]
         }
-      ],
+      },
       "query": {
         "filter": "position_id == 6",
         "select": [
@@ -151,15 +155,19 @@
     "kind": "run",
     "request": {
       "dataset": "positions",
-      "what_if": [
-        {
-          "kind": "shock",
-          "column": "quantity",
-          "op": "pct",
-          "value": "3.3",
-          "round": true
+      "extensions": {
+        "whatif": {
+          "steps": [
+            {
+              "kind": "shock",
+              "column": "quantity",
+              "op": "pct",
+              "value": "3.3",
+              "round": true
+            }
+          ]
         }
-      ],
+      },
       "query": {
         "filter": "position_id == 2",
         "select": [
@@ -321,25 +329,29 @@
     "kind": "run",
     "request": {
       "dataset": "positions",
-      "what_if": [
-        {
-          "kind": "formula",
-          "name": "notional",
-          "expr": "price * quantity"
-        },
-        {
-          "kind": "override",
-          "edits": [
+      "extensions": {
+        "whatif": {
+          "steps": [
             {
-              "key": {
-                "position_id": 1
-              },
-              "column": "price",
-              "value": "100.00"
+              "kind": "formula",
+              "name": "notional",
+              "expr": "price * quantity"
+            },
+            {
+              "kind": "override",
+              "edits": [
+                {
+                  "key": {
+                    "position_id": 1
+                  },
+                  "column": "price",
+                  "value": "100.00"
+                }
+              ]
             }
           ]
         }
-      ],
+      },
       "query": {
         "filter": "position_id == 1",
         "select": [
@@ -364,20 +376,24 @@
     "kind": "compare",
     "request": {
       "dataset": "positions",
-      "what_if": [
-        {
-          "kind": "override",
-          "edits": [
+      "extensions": {
+        "whatif": {
+          "steps": [
             {
-              "key": {
-                "position_id": 12
-              },
-              "column": "quantity",
-              "value": -150
+              "kind": "override",
+              "edits": [
+                {
+                  "key": {
+                    "position_id": 12
+                  },
+                  "column": "quantity",
+                  "value": -150
+                }
+              ]
             }
           ]
         }
-      ],
+      },
       "query": {
         "filter": "desk == 'Commodities'",
         "group_by": [

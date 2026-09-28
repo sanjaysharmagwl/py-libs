@@ -3,12 +3,14 @@
 from book import engine
 
 from pylibs_calc import CalcContext, VersionConflict
+from pylibs_calc_whatif import WhatIfPlugin
 
 calc = engine()
+scenarios = calc.plugin(WhatIfPlugin).scenarios
 ana = CalcContext(principal="ana")
 
 # 1. Create an empty scenario, pinned to today's version of the book.
-s = calc.scenarios.create("positions", "tech rally", ctx=ana)
+s = scenarios.create("positions", "tech rally", ctx=ana)
 
 # 2. Append a step. expected_version must match the scenario's current version (0).
 tech_rally = {
@@ -18,18 +20,18 @@ tech_rally = {
     "value": 8,
     "where": "sector == 'Tech'",
 }
-s = calc.scenarios.append(s.id, [tech_rally], expected_version=0, client_op_id="op-1", ctx=ana)
+s = scenarios.append(s.id, [tech_rally], expected_version=0, client_op_id="op-1", ctx=ana)
 
 # 3. A retry of the same operation is a no-op; a stale version is a 409.
-s = calc.scenarios.append(s.id, [tech_rally], expected_version=0, client_op_id="op-1", ctx=ana)
+s = scenarios.append(s.id, [tech_rally], expected_version=0, client_op_id="op-1", ctx=ana)
 try:
-    calc.scenarios.append(s.id, [tech_rally], expected_version=0, ctx=ana)
+    scenarios.append(s.id, [tech_rally], expected_version=0, ctx=ana)
 except VersionConflict as err:
     print(f"> **{err.status} {err.code}**: {err.message}\n")
 
 # 4. Fork it to try a hedge, without touching the original.
-hedge = calc.scenarios.fork(s.id, name="tech rally, hedged", ctx=ana)
-hedge = calc.scenarios.append(
+hedge = scenarios.fork(s.id, name="tech rally, hedged", ctx=ana)
+hedge = scenarios.append(
     hedge.id,
     [
         {
@@ -55,7 +57,7 @@ for label, ref in [
 ]:
     request = {"dataset": "positions", "query": QUERY}
     if ref is not None:
-        request["scenario"] = ref
+        request["extensions"] = {"whatif": {"scenario": ref}}
     notional = calc.run(request).frame["notional"][0]
     print(f"- **{label}**: Tech notional = {notional}")
-print(f"\nHash chain intact: {calc.scenarios.verify(s.id)}")
+print(f"\nHash chain intact: {scenarios.verify(s.id)}")

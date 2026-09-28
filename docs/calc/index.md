@@ -1,6 +1,6 @@
 # pylibs-calc
 
-**An embeddable what-if calculation engine for the grids that finance teams slice, edit and aggregate.**
+**An embeddable calculation engine for the grids that finance teams slice, edit and aggregate, extensible with plugins such as what-if analysis.**
 
 You give it a table, such as positions, trades or exposures. It answers questions like *"What is each desk's exposure if Tech rallies 5%?"*:
 
@@ -8,7 +8,7 @@ You give it a table, such as positions, trades or exposures. It answers question
 - with results you can reproduce and audit
 - fast enough to drive an interactive grid over millions of rows
 
-It is a Python **library** built on [Polars](https://pola.rs). You embed it in your own service, and it comes with a ready-made [FastAPI router](integrations/fastapi.md) and an [AG Grid adapter](integrations/aggrid.md).
+It is a Python **library** built on [Polars](https://pola.rs). You embed it in your own service, and it comes with a ready-made [FastAPI router](integrations/fastapi.md) and an [AG Grid adapter](integrations/aggrid.md). The core engine does the calculations every analytics service needs; [plugins](concepts/plugins.md) add analyses on top, starting with the [what-if plugin](whatif/index.md).
 
 <div class="grid cards" markdown>
 
@@ -50,10 +50,12 @@ It is a Python **library** built on [Polars](https://pola.rs). You embed it in y
 
 | Capability | In one line | Learn it |
 | --- | --- | --- |
-| Row changes | Filters, derived columns, cell overrides, and bulk shocks (`price +5% where sector == 'Tech'`) | [Override](scenarios/override.md), [Shock](scenarios/shock.md) |
+| Rows | Filters and derived columns | [Filter and derive](scenarios/filter-derive.md) |
 | Aggregation | Group-by, filtered and weighted measures, ratios of sums, subtotals, pivots | [Measures](scenarios/measures.md), [Rollup](scenarios/rollup.md), [Pivot](scenarios/pivot.md) |
-| Scenarios | Saved, versioned, forkable what-ifs with an audit trail | [Saved scenarios](scenarios/saved-scenarios.md) |
 | Comparison | The same query on two sides, with deltas and percentage changes | [Compare](scenarios/compare.md) |
+| Extensibility | Plugins add functions, aggregates, dataset transforms, operations and HTTP routes | [Plugins](concepts/plugins.md), [Write a plugin](extending/write-a-plugin.md) |
+| What-if (plugin) | Cell overrides, bulk shocks (`price +5% where sector == 'Tech'`), formula columns | [Override](scenarios/override.md), [Shock](scenarios/shock.md) |
+| Scenarios (plugin) | Saved, versioned, forkable what-ifs with an audit trail | [Saved scenarios](scenarios/saved-scenarios.md) |
 | Exact numbers | Decimal arithmetic with explicit scales and half-to-even rounding | [Numbers, types and nulls](concepts/numbers-types-nulls.md) |
 | Verifiability | A fingerprint on every result, `explain`, and an independent reference evaluator | [Audit a number](scenarios/audit.md) |
 | Entitlements | Row filters and column visibility enforced for every request | [Access control](scenarios/access-control.md) |
@@ -65,7 +67,7 @@ from book import engine, table
 
 result = engine().run({
     "dataset": "positions",
-    "what_if": [{"kind": "shock", "column": "price", "op": "pct", "value": 5, "where": "sector == 'Tech'"}],
+    "extensions": {"whatif": {"steps": [{"kind": "shock", "column": "price", "op": "pct", "value": 5, "where": "sector == 'Tech'"}]}},
     "query": {
         "group_by": ["desk"],
         "measures": [

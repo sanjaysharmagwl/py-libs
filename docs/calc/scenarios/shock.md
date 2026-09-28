@@ -1,7 +1,7 @@
 ---
 covers:
-  - packages/calc/src/pylibs_calc/spec/scenario.py
-  - packages/calc/src/pylibs_calc/compile/mutations.py
+  - packages/calc_whatif/src/pylibs_calc_whatif/spec.py
+  - packages/calc_whatif/src/pylibs_calc_whatif/polars.py
 ---
 
 # Shock a column
@@ -9,6 +9,10 @@ covers:
 !!! question "The business question"
     *"What happens to my bond book if Tech names rally 5% and yields rise 25 basis points
     across the board?"*
+
+!!! info "What-if plugin"
+    This feature comes from the [what-if plugin](../whatif/index.md) (`pylibs-calc-whatif`). Its
+    steps go in a request's `extensions.whatif` block.
 
 A **shock** changes a whole column at once, optionally only on the rows where a condition
 holds. It is the building block of stress tests and sensitivities.

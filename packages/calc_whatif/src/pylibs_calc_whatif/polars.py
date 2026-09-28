@@ -12,10 +12,17 @@ from typing import Any
 
 import polars as pl
 
-from pylibs_calc.dtypes import Kind, LType, decimal_places, to_polars
+from pylibs_calc.ext import (
+    Kind,
+    LType,
+    compile_expr,
+    dec_dtype,
+    decimal_places,
+    materialize,
+    to_polars,
+)
 
-from .exprs import compile_expr, dec_dtype, materialize
-from .logical import LogicalMutations, OverrideBatch, ShockOp
+from .planner import LogicalMutations, OverrideBatch, ShockOp
 
 
 def apply_mutations(lf: pl.LazyFrame, plan: LogicalMutations) -> pl.LazyFrame:

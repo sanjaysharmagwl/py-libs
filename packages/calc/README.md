@@ -1,20 +1,27 @@
 # pylibs-calc
 
-An embeddable **what-if calculation engine** on [Polars](https://pola.rs), for the grids that
-finance teams slice, edit and aggregate. It is a library, not a service. You embed it in your own
-FastAPI (or any Python) service, and it gives you:
+An embeddable **calculation engine** on [Polars](https://pola.rs), for the grids that finance
+teams slice, edit and aggregate, **extensible with plugins**. It is a library, not a service. You
+embed it in your own FastAPI (or any Python) service.
 
-- **Row changes:** filters, derived columns, overrides of individual cells, and bulk shocks ("price +5% where sector is Tech").
+The **core engine** does what nearly every analytics service needs:
+
+- **Rows:** filters and derived columns.
 - **Aggregation:** group-by with measures (including filtered measures and weighted averages), ratios computed after aggregation, subtotals (rollup) and pivots.
-- **Scenarios:** saved, versioned, forkable what-if scenarios, compared against the base data or each other.
+- **Comparison:** the same query on two sides (data versions, or any plugin's transform), with deltas.
 - **Exact decimals:** exact `Decimal` arithmetic with explicit rounding rules.
 - **Reproducible results:** a fingerprint on every result, and a pure-Python reference evaluator to check the engine against.
-- **Integrations:** an adapter for the AG Grid server-side row model, a FastAPI router, and a Redis scenario store.
+- **Integrations:** an adapter for the AG Grid server-side row model and a FastAPI router.
+
+**Plugins** add analyses on top: functions, aggregates, dataset transforms, whole new operations
+and HTTP routes. What-if analysis (cell overrides, shocks, formula columns, saved and forkable
+scenarios) is the [`pylibs-calc-whatif`](../calc_whatif) plugin.
 
 ```bash
-pip install pylibs-calc              # engine only (polars + pydantic)
-pip install "pylibs-calc[fastapi]"   # + FastAPI router
-pip install "pylibs-calc[redis]"     # + Redis scenario store
+pip install pylibs-calc                  # the core engine (polars + pydantic)
+pip install "pylibs-calc[fastapi]"       # + FastAPI router
+pip install "pylibs-calc[testing]"       # + Hypothesis strategies for testing plugins
+pip install pylibs-calc-whatif           # + the what-if plugin
 ```
 
 **Documentation:** the [docs site](https://github.com/sanjaysharmagwl/py-libs/tree/master/docs/calc)
@@ -25,24 +32,15 @@ From a clone, `make install && make docs-serve` serves it locally.
 
 ```python
 import polars as pl
-from pylibs_calc import Catalog, CalcEngine, InMemoryScenarioStore
+from pylibs_calc import Catalog, CalcEngine
 
 catalog = Catalog()
 catalog.register_frame("positions", df, key_columns=["position_id"], version="2026-09-26")
-engine = CalcEngine(catalog, InMemoryScenarioStore())
+engine = CalcEngine(catalog)  # plugins=[...] to add analyses
 
 result = engine.run(
     {
         "dataset": "positions",
-        "what_if": [
-            {
-                "kind": "shock",
-                "column": "price",
-                "op": "pct",
-                "value": 5,
-                "where": "sector == 'Tech'",
-            }
-        ],
         "query": {
             "filter": "region == 'EMEA' and quantity != 0",
             "derive": [{"name": "notional", "expr": "price * quantity"}],
@@ -63,7 +61,7 @@ result.meta.fingerprint  # SHA-256 of the fully resolved request
 result.meta.total_rows  # rows before paging (for the grid's row count)
 ```
 
-A request is plain JSON (or the equivalent pydantic models: `CalcRequest`, `Query`, `Shock`, ...).
+A request is plain JSON (or the equivalent pydantic models: `CalcRequest`, `Query`, `Measure`, ...).
 Expressions can be written as formulas like `"price * quantity"` or as expression trees. They are
 always stored and fingerprinted as trees.
 
@@ -80,16 +78,28 @@ Registration also normalizes the data:
 - NaN and infinities become null.
 - Key columns are checked: they must have no nulls and no duplicates.
 
-**Scenarios** are saved, append-only logs of steps. Every step keeps all the rows:
+**Plugins** extend an engine. Each one registers what it adds when the engine is built:
 
-| Step | What it does |
-| --- | --- |
-| `override` | Sets cells by key (`{"key": {"position_id": 7}, "column": "price", "value": "101.5"}`). |
-| `shock` | `add`, `mul` or `pct` on a numeric column, optionally `where` a condition holds. |
-| `formula` | A derived column. It is recomputed after all value changes, so a later override of `price` still flows into `notional = price * quantity`. |
-| `disable` | Undoes an earlier step by its sequence number. |
+```python
+from pylibs_calc_whatif import InMemoryScenarioStore, WhatIfPlugin
 
-A scenario is pinned to the dataset version it was created on. Scenarios store changes, not copies of the data, and a scenario only rewrites the columns it changes. You can also send one-off `what_if` steps with any request, on top of a saved scenario or without one.
+engine = CalcEngine(catalog, plugins=[WhatIfPlugin(store=InMemoryScenarioStore())])
+engine.run({"dataset": "positions", "extensions": {"whatif": {"steps": [...]}}, "query": {...}})
+```
+
+| Extension point | Registered with | Used as |
+| --- | --- | --- |
+| Functions | `registry.add_function(FunctionDef(...))` | a function in any formula |
+| Aggregates | `registry.add_aggregate(AggregateDef(...))` | a measure `fn` |
+| Transforms | `registry.add_transform(TransformDef(...))` | a request block under `extensions` |
+| Operations | `registry.add_operation(OperationDef(...))` | `engine.call(name, request)`, `POST /operations/{name}` |
+| HTTP routes | `registry.add_routes(hook)` | routes on the FastAPI router |
+
+Every computation a plugin adds has a Polars implementation and a plain-Python one for the
+reference evaluator; `pylibs_calc.testing` fuzzes the two against each other. Plugins import only
+`pylibs_calc`, `pylibs_calc.ext` and `pylibs_calc.integrations.fastapi`. Installed plugin packages
+advertise themselves under the `pylibs_calc.plugins` entry point, so `discover_plugins()` finds
+them.
 
 **Queries** run their stages in a fixed order:
 
@@ -105,11 +115,9 @@ A scenario is pinned to the dataset version it was created on. Scenarios store c
 
 The order of evaluation is:
 
-1. The dataset version, after the caller's row filter.
-2. The scenario's value changes, in log order.
-3. The scenario's formulas.
-4. The one-off `what_if` steps.
-5. The query.
+1. The dataset version, after the caller's row filter and column restrictions.
+2. The plugin transforms named in `extensions`, in the order the plugins were installed.
+3. The query.
 
 ### Measures
 
@@ -131,6 +139,9 @@ average of ratios.
 Subtotals: with `rollup`, every level is computed from the base rows. The output has a
 `__level` column (0 is the grand total), and subtotal rows sort directly after their details.
 
+Plugins can add more measure functions (a median, a VaR quantile). Like the built-ins, they are
+recomputed from the rows at every level.
+
 Pivots: `pivot: {"on": ["region"], "totals": true}` creates columns named `EMEA_notional` and
 so on. The pivot values are the sorted distinct values, unless you pass an explicit `domain`.
 
@@ -146,7 +157,7 @@ The formulas use a whitelisted subset of Python's expression syntax, parsed with
 - **Logic:** `and`, `or`, `not`.
 - **Membership and nulls:** `x in (...)`, `x not in (...)`, `x is None`, `x is not None`.
 - **Conditionals:** `a if cond else b`.
-- **Functions:** `abs round floor ceil sqrt log exp min max coalesce lower upper contains starts_with ends_with`.
+- **Functions:** `abs round floor ceil sqrt log exp min max coalesce lower upper contains starts_with ends_with`, plus any a plugin adds.
 - **Casts:** `int() float() str() decimal(x, scale) to_date()`.
 
 ### Numbers, types and nulls
@@ -174,46 +185,21 @@ The same typing rules are used by the validator, the Polars compiler and the ref
 
 **Invalid arithmetic** gives null: `x / 0`, `sqrt(-1)` and `log(0)`.
 
-**Shocks:**
-- On decimal columns, the result is rounded to the column's scale.
-- On integer columns, a non-integral factor needs `"round": true`.
-
 **Float sums** can differ in the last bits between runs, because Polars adds values in parallel.
 Pass `"options": {"deterministic": true}` to sum in sorted order; it's slower but reproducible.
 Decimal results are always exact.
 
-## Scenarios, versions and concurrency
+## Compare
 
-```python
-s = engine.scenarios.create("positions", "tech rally", ctx=CalcContext(principal="ana"))
-s = engine.scenarios.append(s.id, [shock_step], expected_version=0, client_op_id="uuid-1")
-engine.run({"dataset": "positions", "scenario": s.id})  # latest version
-engine.run({"dataset": "positions", "scenario": {"id": s.id, "version": 0}})  # any version
-fork = engine.scenarios.fork(s.id, name="what if we hedge")  # copy, then diverge
-engine.scenarios.verify(s.id)  # hash chain intact?
-```
-
-**Versions:**
-- `version` is the log length, so `(id, version)` always names the same content.
-- An append with a stale `expected_version` fails with 409 `version_conflict`.
-- Retrying with the same `client_op_id` is a no-op, so retries are safe.
-- Steps are validated against the dataset before they are stored.
-
-**Audit trail:**
-- Each log entry is hashed together with the previous one, so any edit to the stored log is detectable.
-- Deleting a scenario only hides it, so the audit trail stays intact.
-
-**Stores:**
-- `InMemoryScenarioStore` is for tests and single-replica services.
-- `RedisScenarioStore` (install the `redis` extra) is shared by all replicas. Its appends are a single atomic Lua script, and its keys use a `{id}` hash tag, so they work on Redis Cluster.
-
-**Compare** runs one query on two sides, for example the base data and a scenario, or two scenarios. It joins the results:
+**Compare** runs one query on two sides and joins the results. A side is the dataset (at a
+version) with its own plugin `extensions`: two data versions, the base data and a what-if
+scenario, or two scenarios.
 
 ```python
 engine.compare(
     {
-        "dataset": "positions",
-        "scenario": s.id,
+        "dataset": {"id": "positions", "version": "2026-09-26"},
+        "base": {"version": "2026-09-25"},
         "query": {
             "group_by": ["desk"],
             "measures": [{"name": "mv", "fn": "sum", "of": "price * quantity"}],
@@ -223,7 +209,7 @@ engine.compare(
 )
 ```
 
-- Each measure `m` comes back as `m` (the scenario), `m__base`, `m__delta` and `m__pct`.
+- Each measure `m` comes back as `m` (the target side), `m__base`, `m__delta` and `m__pct`.
 - `m__pct` is null when the base is 0.
 - Row-level views are joined on the dataset's key columns.
 
@@ -249,12 +235,12 @@ app.include_router(
 | Route | Purpose |
 | --- | --- |
 | `POST /query`, `/compare`, `/explain` | Run a request. `/query` also returns Arrow IPC for `Accept: application/vnd.apache.arrow.stream` |
-| `POST /aggrid/rows`, `/aggrid/edit` | AG Grid SSRM `getRows`, and cell edits saved as scenario overrides |
+| `POST /aggrid/rows` | AG Grid SSRM `getRows` |
 | `POST /distinct` | Distinct values of a column (for set filters) |
 | `GET /datasets`, `/datasets/{id}/schema` | Columns with type, role (key, dimension or measure) and whether they can be edited |
-| `GET/POST /scenarios`, `GET/DELETE /scenarios/{id}` | Create, list, read and delete scenarios |
-| `POST /scenarios/{id}/steps`, `/fork` | Append steps (`Idempotency-Key` header supported) and fork |
-| `GET /scenarios/{id}/log`, `/verify` | Read the log and check its hash chain |
+| `GET /operations`, `POST /operations/{name}` | List and run plugin operations |
+
+Plugins add their own routes; the what-if plugin adds `/scenarios/...` and `/aggrid/edit`.
 
 Routes are plain `def` functions, so FastAPI runs them in its thread pool and Polars never blocks
 the event loop. Errors come back as `{"detail": {"code", "message", "path"}}` with the error's HTTP
@@ -263,7 +249,7 @@ status:
 | Status | Codes |
 | --- | --- |
 | 422 | `invalid_request`, `formula_syntax`, `unknown_column`, `type_mismatch`, `unmatched_edits`, ... |
-| 404 | `dataset_not_found`, `scenario_not_found` |
+| 404 | `dataset_not_found`, `scenario_not_found` (what-if plugin) |
 | 409 | `version_conflict` |
 | 413 | `limit_exceeded` |
 | 503 | `engine_busy` |
@@ -273,7 +259,7 @@ status:
 
 - `row_filter` is applied before anything else.
 - `allowed_columns` hides every other non-key column.
-- `EngineConfig.authorize(ctx, action, scenario)` can refuse scenario actions.
+- `EngineConfig.authorize(ctx, action, resource)` is called by plugins before protected actions (the what-if plugin's scenario actions) and can refuse them.
 - `EngineConfig.on_result(meta, ctx)` sees every result, for audit logging.
 
 ## AG Grid (server-side row model)
@@ -291,43 +277,45 @@ const gridOptions = {
   rowModelType: 'serverSide',
   serverSideDatasource: { getRows: p => fetch('/calc/aggrid/rows', {method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({dataset: 'positions', scenario, request: p.request})})
+      body: JSON.stringify({dataset: 'positions', extensions, request: p.request})})
     .then(r => r.json()).then(d => p.success(d)).catch(() => p.fail()) },
   getRowId: p => p.data.__row_id,
   getServerSideGroupKey: d => d.__group_key,   // typed keys: nulls, dates and decimals round-trip
   serverSidePivotResultFieldSeparator: '_',
-  readOnlyEdit: true,                           // edits go to the server as scenario overrides
+  readOnlyEdit: true,                           // with the what-if plugin: edits become overrides
   onCellEditRequest: e => { /* POST /calc/aggrid/edit, then api.refreshServerSide() */ },
 };
 ```
 
-The server-side row model is an AG Grid **Enterprise** feature. [examples/](examples/) has a
-runnable demo with grouping, pivoting, editing and a compare table:
+The server-side row model is an AG Grid **Enterprise** feature. The what-if plugin's
+[examples/](../calc_whatif/examples/) has a runnable demo with grouping, pivoting, editing and a
+compare table:
 
 ```bash
-uv run --with uvicorn uvicorn --app-dir packages/calc/examples app:app --port 8000
+uv run --with uvicorn uvicorn --app-dir packages/calc_whatif/examples app:app --port 8000
 ```
 
 ## Verifiability
 
 **Fingerprints.** Every result's metadata carries:
-- a SHA-256 `fingerprint` of the canonical, fully resolved request (dataset version, effective scenario steps, query, numeric settings and caller context)
-- the dataset and scenario versions, and the scenario's hash-chain head
+- a SHA-256 `fingerprint` of the canonical, fully resolved request (dataset version, effective transform steps, query, numeric settings and caller context)
+- the dataset version, and what each plugin transform reports (`meta.extensions`)
 - the library versions
 - timings, and with `"options": {"audit": true}` the row counts at each stage
 
 The same fingerprint on the same library versions means the same answer, and results are cached under it.
 
 **Explain.** `engine.explain(request)` shows:
-- the effective steps
-- lineage: which steps changed each column, and the formula behind every derived column
+- the effective transform steps, and what each transform explains (for what-if: which steps changed each column)
+- the formula behind every derived column
 - the output types
 - the optimized Polars plan
 
 **The reference evaluator.** `pylibs_calc.verify.reference` evaluates the same logical plans
 row by row, with exact `Decimal` arithmetic and no Polars. `verify(engine, request)` runs the
 engine and the reference on the same rows and reports every difference. On datasets larger than
-`max_rows` it uses a random sample. Use it in a canary job or before upgrading Polars.
+`max_rows` it uses a random sample. Plugin transforms take part through their own reference
+implementations. Use it in a canary job or before upgrading Polars.
 
 The test suite runs thousands of randomly generated datasets and requests through it with
 Hypothesis. That process found real edge cases before release, including a Polars background-query
@@ -343,7 +331,7 @@ Measured with [benchmarks/bench.py](benchmarks/bench.py) on 10 million positions
 | filter, 2 derived columns, 3-key group-by, 5 measures | 979 / 1069 | 552 / 602 |
 | filter, sort by a derived column, one page of 100 rows | 255 / 272 | 233 / 244 |
 | pivot: sector × region, 2 measures, totals | 456 / 545 | 361 / 409 |
-| scenario (100 overrides, a shock, a formula), then group-by | 989 / 1133 | 838 / 1001 |
+| what-if scenario (100 overrides, a shock, a formula), then group-by | 989 / 1133 | 838 / 1001 |
 | 3-level rollup of an exact-decimal product | 1247 / 1614 | 920 / 1053 |
 | next page of a cached aggregate (grid scrolling) | 0.6 / 0.7 | 0.5 / 0.6 |
 
@@ -357,19 +345,18 @@ On Kubernetes:
 
 - **Threads:** set `POLARS_MAX_THREADS` to the pod's CPU limit *before* Polars is imported. `runtime_check()` warns when they differ.
 - **Workers and concurrency:** run one uvicorn worker per pod and keep `EngineConfig.max_concurrent` at 1–2, because Polars already uses every thread. Extra requests queue and get a 503 after `queue_timeout_s`.
-- **Scaling:** scale out with the HPA. Scenarios in Redis make replicas interchangeable.
+- **Scaling:** scale out with the HPA. What-if scenarios in Redis make replicas interchangeable.
 - **Startup:** load datasets at startup, and gate the readiness probe on the load finishing.
 - **Scale beyond pod memory:** register Parquet or IPC files with `register_scan`. Those scans use Polars' streaming engine automatically and push filters and column selection into the file reads. `storage_options` passes cloud credentials through.
 - **Timeouts:** `timeout_s` (per request, or `EngineConfig.default_timeout_s`) cancels long queries with a 504.
-- **Limits:** `Limits` caps page size, unpaged rows, group count, pivot columns, expression size and edits (413).
+- **Limits:** `Limits` caps page size, unpaged rows, group count, pivot columns and expression size (413); plugins have their own (`WhatIfLimits`).
 
 ## Not supported yet
 
-- median, quantiles, standard deviation
+- median, quantiles, standard deviation as built-in measures (plugins can add them)
 - `//` and `%`
 - comparing more than two sides at once
 - pivots in compare
 - spreading an edit on a group row down to its leaf rows
-- moving a scenario onto a newer dataset version
 - AG Grid's advanced filter model
 - sorting rollups by a measure

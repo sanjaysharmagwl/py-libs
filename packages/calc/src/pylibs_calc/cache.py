@@ -1,6 +1,6 @@
 """A byte-bounded LRU cache of result frames.
 
-Keys are content hashes of everything that determines a result (dataset version, scenario head,
+Keys are content hashes of everything that determines a result (dataset version, transform steps,
 canonical query, options, library versions), so entries never go stale and never need
 invalidating; old ones simply fall out.
 """

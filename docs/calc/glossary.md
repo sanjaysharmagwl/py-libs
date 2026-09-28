@@ -15,8 +15,12 @@ Engine terms
 :   **Key columns**: the columns that identify a row, such as `position_id`.
 :   **Scenario**: a saved, append-only log of steps over one dataset version.
 :   **Step**: an override, shock, formula or disable.
-:   **What-if**: steps sent with one request instead of saved.
-:   **Side**: a dataset version with a scenario and what-ifs applied, as one caller sees it. Compare has two sides.
+:   **What-if**: steps sent with one request instead of saved, in its `extensions.whatif` block.
+:   **Plugin**: a package that adds functions, aggregates, transforms, operations or routes to the core engine. What-if is one.
+:   **Transform**: a plugin's change to the dataset before the query runs, switched on by a block under the request's `extensions`.
+:   **Extensions**: the part of a request that holds one block per plugin transform, e.g. `{"whatif": {...}}`.
+:   **Operation**: a new engine call added by a plugin, run with `engine.call(name, request)`.
+:   **Side** (or **view**): a dataset version with the plugin transforms applied, as one caller sees it. Compare has two sides.
 :   **Row view / aggregated view**: a query without / with `group_by` or measures.
 :   **Measure**: an aggregate computed per group.
 :   **Post expression**: a value computed from measures after aggregation, such as a ratio.

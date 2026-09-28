@@ -9,12 +9,15 @@ This page is for **QA engineers** testing `pylibs-calc` itself, or a service bui
 | Business rules (nulls, rounding, ratios) | [Golden cases](golden-cases.md) | `docs/examples/calc/golden.py` |
 | Every documented example | The docs build and `make test` | `docs/examples/calc/test_examples.py` |
 | Engine vs an independent implementation | `verify(engine, request)` | [Audit a number](../scenarios/audit.md) |
-| Randomized edge cases | Hypothesis property tests | `packages/calc/tests/test_property.py` |
-| HTTP contract | FastAPI test client | `packages/calc/tests/test_fastapi.py` |
-| Scenario concurrency and retries | Unit tests with a fake Redis | `packages/calc/tests/test_scenarios.py` |
+| Randomized edge cases | Hypothesis property tests (`pylibs_calc.testing`) | `packages/calc/tests/test_property.py`, `packages/calc_whatif/tests/test_property.py` |
+| The plugin API | A small test plugin using every extension point | `packages/calc/tests/test_plugins.py` |
+| HTTP contract | FastAPI test client | `packages/calc/tests/test_fastapi.py`, `packages/calc_whatif/tests/test_fastapi.py` |
+| Scenario concurrency and retries | Unit tests with a fake Redis | `packages/calc_whatif/tests/test_scenarios.py` |
+| Request compatibility | Version 1 requests give the same results and fingerprints | `packages/calc_whatif/tests/test_plugin.py` |
 
 ```bash
-make test PKG=calc                              # the library's test suite
+make test PKG=calc                              # the core engine's test suite
+make test PKG=calc_whatif                       # the what-if plugin's test suite
 uv run python docs/examples/calc/golden.py      # the golden cases, PASS/FAIL per case
 uv run pytest docs/examples                     # every docs example
 ```

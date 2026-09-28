@@ -13,12 +13,13 @@ pip install "pylibs-calc[fastapi]"
 
 ```python
 from fastapi import Depends, FastAPI
-from pylibs_calc import CalcContext, CalcEngine, Catalog, InMemoryScenarioStore
+from pylibs_calc import CalcContext, CalcEngine, Catalog
 from pylibs_calc.integrations.fastapi import create_router
+from pylibs_calc_whatif import InMemoryScenarioStore, WhatIfPlugin
 
 catalog = Catalog()
 catalog.register_frame("positions", load_positions(), key_columns=["position_id"])
-engine = CalcEngine(catalog, InMemoryScenarioStore())
+engine = CalcEngine(catalog, plugins=[WhatIfPlugin(store=InMemoryScenarioStore())])
 
 app = FastAPI()
 app.include_router(
@@ -54,13 +55,22 @@ app.include_router(
 | `POST /query`, `/compare` | Run a request. Answers with JSON, or with Arrow IPC for `Accept: application/vnd.apache.arrow.stream` |
 | `POST /explain` | Effective steps, lineage, types and the Polars plan |
 | `POST /distinct` | Distinct values of a column (for set filters) |
-| `POST /aggrid/rows`, `/aggrid/edit` | AG Grid SSRM `getRows`, and cell edits saved as scenario overrides |
+| `POST /aggrid/rows` | AG Grid SSRM `getRows` |
 | `GET /datasets`, `/datasets/{id}/schema` | Datasets, and their columns as the caller may see them |
+| `GET /operations`, `POST /operations/{name}` | List and run [plugin operations](../concepts/plugins.md#operations) |
+
+Result responses carry the `X-Calc-Fingerprint` and `X-Calc-Total-Rows` headers. Request bodies may use the version 1 shape (`scenario`, `what_if`); it is [upgraded](../reference/request-schema.md#versions) on the way in.
+
+### Routes added by plugins
+
+Each installed plugin can add routes (see [`Registry.add_routes`](../concepts/plugins.md#http-routes)). The what-if plugin adds:
+
+| Route | Purpose |
+| --- | --- |
+| `POST /aggrid/edit` | An AG Grid cell edit, saved as a scenario override |
 | `GET/POST /scenarios`, `GET/DELETE /scenarios/{id}` | List, create, read and delete scenarios |
 | `POST /scenarios/{id}/steps`, `/fork` | Append steps (supports the `Idempotency-Key` header), and fork |
 | `GET /scenarios/{id}/log`, `/verify` | Read the log, and check its hash chain |
-
-Result responses carry the `X-Calc-Fingerprint` and `X-Calc-Total-Rows` headers.
 
 ## Errors
 

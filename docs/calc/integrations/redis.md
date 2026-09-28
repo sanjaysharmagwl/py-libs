@@ -1,24 +1,25 @@
 ---
 covers:
-  - packages/calc/src/pylibs_calc/scenario/redis_store.py
-  - packages/calc/src/pylibs_calc/scenario/store.py
+  - packages/calc_whatif/src/pylibs_calc_whatif/scenario/redis_store.py
+  - packages/calc_whatif/src/pylibs_calc_whatif/scenario/store.py
 ---
 
 # Redis scenario store
 
-`InMemoryScenarioStore` keeps scenarios in one process, so they are lost on restart and not shared between replicas. `RedisScenarioStore` shares them across every replica of a service.
+The [what-if plugin](../whatif/index.md)'s `InMemoryScenarioStore` keeps scenarios in one process, so they are lost on restart and not shared between replicas. `RedisScenarioStore` shares them across every replica of a service.
 
 ```bash
-pip install "pylibs-calc[redis]"
+pip install "pylibs-calc-whatif[redis]"
 ```
 
 ```python
 import redis
 from pylibs_calc import CalcEngine
-from pylibs_calc.scenario.redis_store import RedisScenarioStore
+from pylibs_calc_whatif import WhatIfPlugin
+from pylibs_calc_whatif.scenario.redis_store import RedisScenarioStore
 
 store = RedisScenarioStore(redis.Redis.from_url("redis://redis:6379/0"), prefix="calc:scn")
-engine = CalcEngine(catalog, store)
+engine = CalcEngine(catalog, plugins=[WhatIfPlugin(store=store)])
 ```
 
 ## How it works
@@ -29,7 +30,7 @@ engine = CalcEngine(catalog, store)
 
 ## Durability
 
-How durable the audit trail is depends on Redis persistence: AOF and replication. For audit-grade retention, implement the `ScenarioStore` protocol on a database. It has six methods: `create`, `append`, `get`, `entries`, `list` and `delete`. `InMemoryScenarioStore` in `scenario/store.py` is a short reference implementation.
+How durable the audit trail is depends on Redis persistence: AOF and replication. For audit-grade retention, implement the `ScenarioStore` protocol on a database. It has six methods: `create`, `append`, `get`, `entries`, `list` and `delete`. `InMemoryScenarioStore` in `pylibs_calc_whatif/scenario/store.py` is a short reference implementation.
 
 ## Testing
 

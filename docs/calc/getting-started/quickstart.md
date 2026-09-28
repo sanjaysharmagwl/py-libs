@@ -6,20 +6,23 @@ covers:
 
 # Quick start
 
-This page takes five minutes. You will register a dataset, run a query, try a what-if, and read the result's metadata.
+This page takes five minutes. You will register a dataset, run a query, try a what-if with the what-if plugin, and read the result's metadata.
 
 ## 1. Register data and create an engine
 
 ```python
 import polars as pl
-from pylibs_calc import CalcEngine, Catalog, InMemoryScenarioStore
+from pylibs_calc import CalcEngine, Catalog
+from pylibs_calc_whatif import InMemoryScenarioStore, WhatIfPlugin
 
 catalog = Catalog()
 catalog.register_frame("positions", df, key_columns=["position_id"], version="2026-09-30")
-engine = CalcEngine(catalog, InMemoryScenarioStore())
+engine = CalcEngine(catalog, plugins=[WhatIfPlugin(store=InMemoryScenarioStore())])
 ```
 
 `df` is any Polars DataFrame. These docs use a [twelve-position example book](../scenarios/index.md#the-example-book), and `book.engine()` does exactly the three lines above.
+
+The core engine (`pylibs-calc`) filters, derives, aggregates, pivots and compares. Everything else is a [plugin](../concepts/plugins.md); `WhatIfPlugin` (`pip install pylibs-calc-whatif`) adds overrides, shocks, formula columns and saved scenarios. Without plugins, `CalcEngine(catalog)` is all you need.
 
 ## 2. Ask a question
 
@@ -31,7 +34,7 @@ A request is plain JSON: the same dictionary works from Python and over HTTP.
 
 ## 3. Ask "what if?"
 
-Add `what_if` steps to change the data for this request only. Here, Equities fall 10%:
+Add what-if steps under `extensions.whatif` to change the data for this request only. Here, Equities fall 10%:
 
 ```python exec="on" source="above"
 from book import engine, table
@@ -39,15 +42,19 @@ from book import engine, table
 result = engine().compare(
     {
         "dataset": "positions",
-        "what_if": [
-            {
-                "kind": "shock",
-                "column": "price",
-                "op": "pct",
-                "value": -10,
-                "where": "desk == 'Equities'",
+        "extensions": {
+            "whatif": {
+                "steps": [
+                    {
+                        "kind": "shock",
+                        "column": "price",
+                        "op": "pct",
+                        "value": -10,
+                        "where": "desk == 'Equities'",
+                    }
+                ]
             }
-        ],
+        },
         "query": {
             "group_by": ["desk"],
             "measures": [{"name": "mv", "fn": "sum", "of": "price * quantity"}],

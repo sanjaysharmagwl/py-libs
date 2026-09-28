@@ -11,7 +11,7 @@ covers:
     *"If Rates sells off 2% and Credit 1%, what is the market-value impact per desk, largest loss
     first?"*
 
-`compare` runs **the same query on two sides** and joins the results, adding a base value, a delta and a percentage change for every measure.
+`compare` runs **the same query on two sides** and joins the results, adding a base value, a delta and a percentage change for every measure. It is part of the core engine: a side is the dataset (at a version) with its own plugin `extensions`, so you can compare what-if scenarios, two versions of the data, or anything a plugin transform produces.
 
 ## Try it
 
@@ -47,12 +47,15 @@ covers:
 
 ## Choosing the two sides
 
-| Scenario side | Base side | Compares |
+The target side is the request's `dataset` and `extensions`; the base side is `base`, which has its own `extensions` and an optional dataset `version`. By default the base is the unmodified dataset.
+
+| Target side | Base side (`base`) | Compares |
 | --- | --- | --- |
-| `what_if` | — | One-off changes vs the unmodified data (this example) |
-| `scenario` | — | A saved scenario vs the unmodified data |
-| `scenario` | `base` | Two saved scenarios, e.g. "hedged" vs "unhedged" |
-| `scenario` | `base` + `base_what_if` | A scenario vs another with extra changes |
+| `extensions.whatif.steps` | — | One-off changes vs the unmodified data (this example) |
+| `extensions.whatif.scenario` | — | A saved scenario vs the unmodified data |
+| `extensions.whatif.scenario` | `{"extensions": {"whatif": {"scenario": ...}}}` | Two saved scenarios, e.g. "hedged" vs "unhedged" |
+| `extensions.whatif.scenario` | `{"extensions": {"whatif": {"scenario": ..., "steps": [...]}}}` | A scenario vs another with extra changes |
+| `dataset.version` = today | `{"version": "yesterday"}` | Two versions of the data, no plugin needed |
 
 - Aggregated queries are joined on the group columns.
 - Row views are joined on the dataset's key columns, so you see the change per position.
