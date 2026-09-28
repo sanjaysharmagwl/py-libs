@@ -93,6 +93,7 @@ nav:
   - pylibs-calc:
       - calc/index.md
       - Getting started:
+          - "Finance primer: start here": calc/getting-started/finance-primer.md
           - Install: calc/getting-started/install.md
           - Quick start: calc/getting-started/quickstart.md
           - Run the demo grid: calc/getting-started/run-the-demo.md
