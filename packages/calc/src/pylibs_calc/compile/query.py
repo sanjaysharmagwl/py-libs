@@ -155,6 +155,13 @@ def _hidden(h: HiddenAgg, deterministic: bool) -> pl.Expr:
             return pl.len().cast(pl.Int64)
         return pl.col(_input_name(h)).sum().cast(pl.Int64)
     x = pl.col(_input_name(h))
+    if h.fn == "plugin":
+        # Plugin aggregates see only the present values; a group without any is null.
+        value = h.impl.polars(x.drop_nulls()).cast(to_polars(h.ltype))
+        present = x.count() > 0
+        if h.ltype.kind is Kind.FLOAT:
+            present = present & value.is_finite()
+        return pl.when(present).then(value)
     if h.fn == "sum":
         # Summing sorted values makes float totals independent of how threads split the rows.
         total = x.sort().sum() if deterministic and h.ltype.kind is Kind.FLOAT else x.sum()

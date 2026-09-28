@@ -7,13 +7,14 @@ This page is written in the spirit of model documentation, as risk teams expect 
 - **The input data is correct.** The engine checks types and keys, not business validity (for example, that a price is positive).
 - **Numbers.** Decimal columns are exact at their registered scale. Results are rounded half-to-even at the scales described in [Numbers, types and nulls](concepts/numbers-types-nulls.md). Float columns follow IEEE-754, and float sums are only reproducible bit for bit with `deterministic: true`.
 - **Nulls** follow SQL semantics everywhere. Invalid arithmetic (`x / 0`, `sqrt(-1)`, `log(0)`) gives null.
-- **Scenarios** change values, never which rows exist. A shock applies the same factor to every matching row; there are no path-dependent or cross-row calculations.
+- **What-if scenarios** change values, never which rows exist. A shock applies the same factor to every matching row; there are no path-dependent or cross-row calculations.
+- **Plugins** are trusted code running in your process. The engine checks the names they register and runs their transforms after the caller's entitlements, but it can't check that a plugin's Polars and reference implementations agree; test them with `pylibs_calc.testing` and `verify()`.
 - **Versions.** A result is reproducible when the dataset version and the scenario version are both pinned, on the same library versions (`meta.versions`).
 - **Entitlements** are only as good as the `CalcContext` the host builds. The engine enforces the context; it doesn't authenticate anyone.
 
 ## Not supported yet
 
-- median, quantiles, standard deviation
+- median, quantiles, standard deviation as built-in measures (a plugin can add them with an `AggregateDef`)
 - the `//` and `%` operators
 - comparing more than two sides at once
 - pivots in compare, and `having` together with `pivot`

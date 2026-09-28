@@ -19,6 +19,7 @@ from __future__ import annotations
 import ast
 import io
 import keyword
+import re
 import tokenize
 
 from pydantic import ValidationError
@@ -26,6 +27,7 @@ from pydantic import ValidationError
 from pylibs_calc.errors import SpecError
 from pylibs_calc.spec.expr import (
     FUNC_ARITY,
+    FUNC_NAME_PATTERN,
     Binary,
     Cast,
     CastTarget,
@@ -296,7 +298,7 @@ class _Converter:
             ):
                 raise self.fail("decimal(x, scale) needs an integer scale", node)
             return Cast(arg=self.convert(raw[0], level), to="decimal", scale=raw[1].value)
-        if fname not in FUNC_ARITY:
+        if fname not in FUNC_ARITY and not re.match(FUNC_NAME_PATTERN, fname):
             raise self.fail(f"unknown function: {fname}", node)
         args = tuple(self.convert(a, level) for a in raw)
         try:

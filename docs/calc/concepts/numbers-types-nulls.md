@@ -83,9 +83,7 @@ Polars adds floats in parallel, so a float sum can differ in the last bits from 
 ```python
 from pylibs_calc import CalcEngine, EngineConfig, NumericConfig
 
-engine = CalcEngine(
-    catalog, store, EngineConfig(numeric=NumericConfig(max_scale=18, division_scale=12))
-)
+engine = CalcEngine(catalog, EngineConfig(numeric=NumericConfig(max_scale=18, division_scale=12)))
 ```
 
 The numeric settings are part of every fingerprint, so changing them can't return a stale cached result.

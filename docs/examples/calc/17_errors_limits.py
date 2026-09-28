@@ -27,12 +27,16 @@ BAD_REQUESTS = {
     "an unknown dataset": {"dataset": "trades"},
     "an override of a key that doesn't exist": {
         "dataset": "positions",
-        "what_if": [
-            {
-                "kind": "override",
-                "edits": [{"key": {"position_id": 99}, "column": "price", "value": 1}],
+        "extensions": {
+            "whatif": {
+                "steps": [
+                    {
+                        "kind": "override",
+                        "edits": [{"key": {"position_id": 99}, "column": "price", "value": 1}],
+                    }
+                ]
             }
-        ],
+        },
     },
 }
 

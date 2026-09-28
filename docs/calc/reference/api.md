@@ -1,12 +1,12 @@
 # Python API
 
-Everything below is importable from `pylibs_calc` directly, unless a heading shows a longer module path. This page is generated from the docstrings, so it always matches the installed version.
+Everything below is importable from `pylibs_calc` (or, for the what-if plugin, `pylibs_calc_whatif`) directly, unless a heading shows a longer module path. This page is generated from the docstrings, so it always matches the installed version.
 
 ## Engine
 
 ::: pylibs_calc.CalcEngine
     options:
-      members: [run, compare, explain, distinct_values, schema, scenarios]
+      members: [run, compare, explain, distinct_values, schema, call, plugin]
 
 ::: pylibs_calc.EngineConfig
 
@@ -50,33 +50,85 @@ Everything below is importable from `pylibs_calc` directly, unless a heading sho
 
 ::: pylibs_calc.DatasetRef
 
-::: pylibs_calc.ScenarioRef
+::: pylibs_calc.Side
 
-## Scenario steps
+## Plugin API
 
-::: pylibs_calc.Override
+See [Plugins](../concepts/plugins.md) and [Write a plugin](../extending/write-a-plugin.md).
 
-::: pylibs_calc.Edit
+::: pylibs_calc.Plugin
 
-::: pylibs_calc.Shock
+::: pylibs_calc.Registry
+    options:
+      members: [add_function, add_aggregate, add_transform, add_operation, add_routes]
 
-::: pylibs_calc.Formula
+::: pylibs_calc.FunctionDef
 
-::: pylibs_calc.Disable
+::: pylibs_calc.AggregateDef
 
-## Saved scenarios
+::: pylibs_calc.TransformDef
 
-::: pylibs_calc.ScenarioManager
+::: pylibs_calc.Bound
 
-::: pylibs_calc.Scenario
+::: pylibs_calc.TransformPlan
 
-::: pylibs_calc.LogEntry
+::: pylibs_calc.BindContext
 
-::: pylibs_calc.ScenarioStore
+::: pylibs_calc.PlanContext
 
-::: pylibs_calc.InMemoryScenarioStore
+::: pylibs_calc.OperationDef
 
-::: pylibs_calc.scenario.redis_store.RedisScenarioStore
+::: pylibs_calc.Kernel
+
+::: pylibs_calc.View
+
+::: pylibs_calc.discover_plugins
+
+::: pylibs_calc.PluginError
+
+::: pylibs_calc.integrations.fastapi.RouterKit
+
+::: pylibs_calc.ext
+
+::: pylibs_calc.testing
+
+## What-if plugin
+
+::: pylibs_calc_whatif.WhatIfPlugin
+
+::: pylibs_calc_whatif.WhatIf
+
+::: pylibs_calc_whatif.WhatIfLimits
+
+::: pylibs_calc_whatif.ScenarioRef
+
+::: pylibs_calc_whatif.Override
+
+::: pylibs_calc_whatif.Edit
+
+::: pylibs_calc_whatif.Shock
+
+::: pylibs_calc_whatif.Formula
+
+::: pylibs_calc_whatif.Disable
+
+::: pylibs_calc_whatif.ScenarioManager
+
+::: pylibs_calc_whatif.Scenario
+
+::: pylibs_calc_whatif.LogEntry
+
+::: pylibs_calc_whatif.ScenarioStore
+
+::: pylibs_calc_whatif.InMemoryScenarioStore
+
+::: pylibs_calc_whatif.scenario.redis_store.RedisScenarioStore
+
+::: pylibs_calc_whatif.CellEdit
+
+::: pylibs_calc_whatif.edit_to_override
+
+::: pylibs_calc_whatif.ScenarioNotFound
 
 ## Results
 
@@ -129,8 +181,6 @@ Everything below is importable from `pylibs_calc` directly, unless a heading sho
 ::: pylibs_calc.NotFound
 
 ::: pylibs_calc.DatasetNotFound
-
-::: pylibs_calc.ScenarioNotFound
 
 ::: pylibs_calc.Forbidden
 

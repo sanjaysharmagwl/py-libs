@@ -1,12 +1,12 @@
 # Run the demo grid
 
-The repository includes a small service: `pylibs-calc` behind FastAPI, with an AG Grid page on top. It is the quickest way for **business users and QA** to see the engine working, with no code to write.
+The repository includes a small service: `pylibs-calc` with the [what-if plugin](../whatif/index.md) behind FastAPI, and an AG Grid page on top. It is the quickest way for **business users and QA** to see the engine working, with no code to write.
 
 ## Start it
 
 ```bash
 make install
-uv run --with uvicorn uvicorn --app-dir packages/calc/examples app:app --port 8000
+uv run --with uvicorn uvicorn --app-dir packages/calc_whatif/examples app:app --port 8000
 ```
 
 Open <http://localhost:8000>.

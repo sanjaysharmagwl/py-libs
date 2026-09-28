@@ -72,7 +72,8 @@ local only for now). `docs/contributing.md` is the full guide; the rules that ma
   `docs/.docs-sync.json`. A pre-commit hook re-syncs when `graph.json` is staged; CI runs
   `--check` and `mkdocs build --strict`.
 - **When you change calc behaviour**, update the scenario page and example for it, and keep
-  every name in `pylibs_calc.__all__` mentioned on some page (`stale.md` lists misses).
+  every name in `pylibs_calc.__all__` and `pylibs_calc_whatif.__all__` mentioned on some page
+  (`stale.md` lists misses). The docs sync covers both packages (`SOURCES` in the script).
 - Markdown is excluded from `ruff format` (it would rewrite `--8<--` snippet markers).
 - MkDocs is pinned `<2`: MkDocs 2.0 drops the plugin system these docs rely on.
 
@@ -95,15 +96,24 @@ local only for now). `docs/contributing.md` is the full guide; the rules that ma
   `ruff format` also formats Python code blocks in Markdown files. `graphify-out/` is excluded.
   Pre-commit also runs `uv-lock`, so `uv.lock` must stay in sync (CI uses `--locked`).
 - **Optional extras**: packages may declare `[project.optional-dependencies]` (e.g. `pylibs-calc`'s
-  `fastapi` and `redis`). CI, release and `make install` sync with `--all-extras`, so mypy and the
+  `fastapi` and `testing`, `pylibs-calc-whatif`'s `redis`). CI, release and `make install` sync with `--all-extras`, so mypy and the
   tests always see them; keep extras out of a package's top-level import path (a subprocess test
   in `packages/calc/tests/test_runtime.py` guards this) and raise an `ImportError` naming the
   extra when one is missing. mypy runs with the `pydantic.mypy` plugin.
-- **`pylibs-calc` specifics**: every calculation is a logical plan (`compile/logical.py`) executed
-  twice: by Polars (`compile/`) and by the pure-Python reference (`verify/reference.py`).
-  Any change to semantics must update both; `tests/test_property.py` fuzzes them against each
-  other. Don't add `from __future__ import annotations` to `integrations/fastapi.py` (FastAPI
-  needs the route annotations as real objects).
+- **`pylibs-calc` specifics**: a *core engine* plus *plugins*. The core (`packages/calc`) knows
+  nothing about what-if; `pylibs-calc-whatif` (`packages/calc_whatif`) is a plugin that uses only
+  the public API: `pylibs_calc`, `pylibs_calc.ext`, `pylibs_calc.integrations.fastapi` (and
+  `pylibs_calc.testing` in tests). `packages/calc_whatif/tests/test_plugin.py` enforces that
+  boundary in both directions; new plugin needs go into `pylibs_calc.ext`/the plugin API
+  (`plugins.py`: functions, aggregates, transforms, operations, routes), not into private imports.
+  Every calculation is executed twice: by Polars and by the pure-Python reference
+  (`verify/reference.py`, and each plugin's `apply_reference`/`reference`). Any change to
+  semantics must update both; `test_property.py` in each package fuzzes them against each other
+  with `pylibs_calc.testing`. Requests are versioned (`spec_version`, currently 2): an
+  incompatible spec change needs an upgrader in `spec/canonical.py` and must keep old requests'
+  results and fingerprints. Don't add `from __future__ import annotations` to
+  `integrations/fastapi.py` or a plugin's routes module (FastAPI needs the route annotations as
+  real objects).
 - **Ruff version**: pinned exactly (`ruff==X.Y.Z`) in the root `dev` group, and the
   `astral-sh/ruff-pre-commit` `rev` in `.pre-commit-config.yaml` must be `vX.Y.Z`, so pre-commit,
   `make lint` and CI all run the same ruff. To upgrade, change both, run `uv lock`, then

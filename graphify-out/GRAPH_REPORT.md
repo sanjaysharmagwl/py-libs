@@ -1,22 +1,22 @@
-# Graph Report - py-libs  (2026-09-27)
+# Graph Report - py-libs  (2026-09-28)
 
 ## Corpus Check
-- 139 files · ~69,332 words
+- 162 files · ~84,312 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 10 file(s) not represented in the graph (top: (none) 6, .typed 3, .lock 1)
+- Unclassified: 11 file(s) not represented in the graph (top: (none) 6, .typed 4, .lock 1)
 
 ## Summary
-- 1364 nodes · 3852 edges · 94 communities (81 shown, 13 thin omitted)
-- Extraction: 86% EXTRACTED · 14% INFERRED · 0% AMBIGUOUS · INFERRED: 545 edges (avg confidence: 0.94)
+- 1776 nodes · 4753 edges · 120 communities (100 shown, 20 thin omitted)
+- Extraction: 87% EXTRACTED · 13% INFERRED · 0% AMBIGUOUS · INFERRED: 627 edges (avg confidence: 0.92)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `580901aa`
+- Built from commit: `598d1832`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- engine.py
+- canonical.py
 - pytest
 - py-libs
 - CalcEngine
@@ -24,384 +24,412 @@
 - pylibs-core
 - core/README.md
 - utils/README.md
-- compile/query.py
-- reference.py
+- engine.py
+- verify/reference.py
 - .register_scan
 - Catalog
-- DatasetRef
+- AgGridAdapter
 - docs_from_graph.py
-- CalcContext
-- pylibs_calc/__init__.py
-- Measure
-- test_property.py
-- fingerprint
-- aggrid.py
+- ScenarioManager
+- spec/query.py
+- ext.py
+- BindContext
+- Model
+- plan_mutations
 - book.py
-- Scenario
+- Any
 - create_router
 - exprs.py
-- ScenarioManager
-- VersionConflict
-- mutations.py
-- manager.py
-- test_fastapi.py
-- ScenarioStore
-- .collect
-- Logic
-- logical.py
-- catalog.py
-- errors.py
+- Kernel
+- Scenario
+- adapters/aggrid.py
+- TransformPlan
+- golden.py
+- test_scenarios.py
 - exec.py
-- spec/query.py
-- ResultCache
-- .append
-- expr.py
-- Ratios after aggregation
+- CalcContext
+- SpecError
+- from_polars
+- pylibs_calc/__init__.py
+- calc/tests/test_aggrid.py
+- 17_errors_limits.py
+- EngineConfig
 - LType
+- Ratios after aggregation
+- Write a plugin
+- compare.py
 - scenarios/index.md
-- Formula language
+- Errors and limits
 - Contributing to the docs
 - fastapi.py
-- engine
+- ResultCache
 - adapters/__init__.py
-- audit.md
+- testing-guide.md
 - compile/__init__.py
 - integrations/__init__.py
 - spec/__init__.py
 - pylibs-calc
 - Numbers, types and nulls
-- Limits
+- PlanContext
 - Python API
 - Filtered measures
-- bench.py
-- DatasetCatalog
+- json_safe
+- DatasetSchema
 - build_schema
-- ColRef
+- expr.py
 - Dataset
 - hooks.py
-- fastapi.md
-- Call the API with curl
-- golden.py
-- Lit
+- calc/tests/test_compare.py
+- plugins.md
+- pylibs-calc-whatif
+- body_extensions
 - Access control
-- Pivot
-- SpecError
-- Saved scenarios and forks
+- Audit a number
+- Sort and page
+- ScenarioStore
 - Shock a column
-- FastAPI
+- calc_whatif/tests/test_compare.py
 - Disable a step
 - positions
-- _Converter
+- formula.py
 - request_of
 - AG Grid
-- .__init__
-- InMemoryScenarioStore
+- _call
+- WhatIfPlugin
 - Run the demo grid
 - pylibs-calc
-- ._check
-- pylibs-calc
-- columns
-- filter-derive.md
-- Executor
-- CalcResult
-- Errors and limits
-- ._keep_kind
+- validate.py
+- Concepts
+- model_validator
+- Filter and derive
 - Performance
-- _result_response
-- 07_pivot.py
+- CalcResult
+- RedisScenarioStore
+- add_routes
+- dtypes.py
+- verify
+- measures
+- plugin.py
+- check_pages
+- Registry
+- synthetic_book
+- test_plugin.py
+- UsdBound
+- pathlib
+- plugins.py
+- .register
+- Architecture
+- calc/tests/conftest.py
+- engine
+- .schema
+- Formula columns
+- release_info.py
+- check_rollup_totals
+- Quick start
+- .attach
+- Override a cell
+- PluginError
+- test_plugins.py
+- EngineName
+- Exception
+- Scalar
+- DataType
+- Protocol
 
 ## God Nodes (most connected - your core abstractions)
-1. `CalcEngine` - 135 edges
-2. `LType` - 85 edges
-3. `SpecError` - 70 edges
-4. `CalcContext` - 45 edges
-5. `Kind` - 45 edges
-6. `AgGridAdapter` - 43 edges
-7. `Scenario` - 39 edges
-8. `Catalog` - 37 edges
-9. `Typed` - 37 edges
-10. `compile_expr()` - 35 edges
+1. `CalcEngine` - 136 edges
+2. `SpecError` - 75 edges
+3. `CalcContext` - 57 edges
+4. `Kernel` - 48 edges
+5. `WhatIfPlugin` - 40 edges
+6. `Typed` - 39 edges
+7. `AgGridAdapter` - 38 edges
+8. `Scenario` - 38 edges
+9. `compile_expr()` - 35 edges
+10. `LType` - 35 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Options` --references--> `AgGridAdapter`  [INFERRED]
-  docs/calc/integrations/fastapi.md → packages/calc/src/pylibs_calc/adapters/aggrid.py
-- `Limits` --references--> `Limits`  [INFERRED]
-  docs/calc/scenarios/errors-limits.md → packages/calc/src/pylibs_calc/config.py
+- `Functions` --references--> `FunctionDef`  [INFERRED]
+  docs/calc/concepts/formula-language.md → packages/calc/src/pylibs_calc/plugins.py
+- `1. Functions and aggregates` --references--> `LType`  [INFERRED]
+  docs/calc/extending/write-a-plugin.md → packages/calc/src/pylibs_calc/dtypes.py
+- `Check the runtime` --references--> `runtime_check()`  [INFERRED]
+  docs/calc/getting-started/install.md → packages/calc/src/pylibs_calc/exec.py
 - `Glossary` --references--> `CalcContext`  [INFERRED]
   docs/calc/glossary.md → packages/calc/src/pylibs_calc/config.py
-- `Assumptions` --references--> `CalcContext`  [INFERRED]
-  docs/calc/limitations.md → packages/calc/src/pylibs_calc/config.py
-- `Test a service built on the engine` --references--> `CalcContext`  [INFERRED]
-  docs/calc/qa/testing-guide.md → packages/calc/src/pylibs_calc/config.py
+- `Gotchas` --references--> `edit_to_override()`  [INFERRED]
+  docs/calc/integrations/aggrid.md → packages/calc_whatif/src/pylibs_calc_whatif/aggrid.py
 
 ## Import Cycles
-- None detected.
+- 3-file cycle: `packages/calc/src/pylibs_calc/engine.py -> packages/calc/src/pylibs_calc/plugins.py -> packages/calc/src/pylibs_calc/integrations/fastapi.py -> packages/calc/src/pylibs_calc/engine.py`
+- 4-file cycle: `packages/calc/src/pylibs_calc/compile/logical.py -> packages/calc/src/pylibs_calc/plugins.py -> packages/calc/src/pylibs_calc/integrations/fastapi.py -> packages/calc/src/pylibs_calc/engine.py -> packages/calc/src/pylibs_calc/compile/logical.py`
+- 4-file cycle: `packages/calc/src/pylibs_calc/compile/validate.py -> packages/calc/src/pylibs_calc/plugins.py -> packages/calc/src/pylibs_calc/integrations/fastapi.py -> packages/calc/src/pylibs_calc/engine.py -> packages/calc/src/pylibs_calc/compile/validate.py`
+- 5-file cycle: `packages/calc/src/pylibs_calc/compile/logical.py -> packages/calc/src/pylibs_calc/plugins.py -> packages/calc/src/pylibs_calc/integrations/fastapi.py -> packages/calc/src/pylibs_calc/engine.py -> packages/calc/src/pylibs_calc/compile/query.py -> packages/calc/src/pylibs_calc/compile/logical.py`
+- 5-file cycle: `packages/calc/src/pylibs_calc/compile/compare.py -> packages/calc/src/pylibs_calc/compile/validate.py -> packages/calc/src/pylibs_calc/plugins.py -> packages/calc/src/pylibs_calc/integrations/fastapi.py -> packages/calc/src/pylibs_calc/engine.py -> packages/calc/src/pylibs_calc/compile/compare.py`
+- 5-file cycle: `packages/calc/src/pylibs_calc/compile/exprs.py -> packages/calc/src/pylibs_calc/compile/validate.py -> packages/calc/src/pylibs_calc/plugins.py -> packages/calc/src/pylibs_calc/integrations/fastapi.py -> packages/calc/src/pylibs_calc/engine.py -> packages/calc/src/pylibs_calc/compile/exprs.py`
+- 5-file cycle: `packages/calc/src/pylibs_calc/compile/logical.py -> packages/calc/src/pylibs_calc/compile/validate.py -> packages/calc/src/pylibs_calc/plugins.py -> packages/calc/src/pylibs_calc/integrations/fastapi.py -> packages/calc/src/pylibs_calc/engine.py -> packages/calc/src/pylibs_calc/compile/logical.py`
 
-## Communities (94 total, 13 thin omitted)
+## Communities (120 total, 20 thin omitted)
 
-### Community 0 - "engine.py"
-Cohesion: 0.14
-Nodes (20): collections, collections_abc, dataclasses, frame_size(), DataFrame, A byte-bounded LRU cache of result frames. Keys are content hashes of…, compare_frame(), LazyFrame (+12 more)
+### Community 0 - "canonical.py"
+Cohesion: 0.13
+Nodes (22): hashlib, canonical_json(), fingerprint(), Any, Canonical JSON, fingerprints and spec-version upgrades. The canonical form of a…, SHA-256 of the canonical JSON, as hex., The request's ``spec_version``; a request without one is version 1 if it uses…, Bring a raw request dict up to the current ``spec_version``. (+14 more)
 
 ### Community 1 - "pytest"
 Cohesion: 0.07
-Nodes (30): CaptureFixture, parametrize, Run every documentation example, so a change that breaks the docs also breaks…, test_example_runs(), test_golden_cases(), hypothesis, importlib_metadata, MonkeyPatch (+22 more)
+Nodes (35): fastapi_testclient, io, client(), resolve(), fixture, parametrize, TestClient, test_body_limit() (+27 more)
 
 ### Community 2 - "py-libs"
 Cohesion: 0.22
 Nodes (8): Adding a package, Building, Development, Layout, License, One-time setup, py-libs, Releasing
 
 ### Community 3 - "CalcEngine"
-Cohesion: 0.06
-Nodes (74): decimal, fakeredis, CalcEngine, column(), Any, parametrize, rows(), ssrm() (+66 more)
+Cohesion: 0.12
+Nodes (35): CalcEngine, Evaluate calculation requests over a…, Any, Evaluate one expression on the row with id 1., run(), test_audit_counts_stages(), test_bad_formula_reports_a_path(), test_context_row_filter_and_columns() (+27 more)
 
 ### Community 4 - "AGENTS.md"
 Cohesion: 0.25
 Nodes (6): Architecture and conventions, Code knowledge graph (graphify), Commands, Documentation, Releasing, What this is
 
-### Community 9 - "compile/query.py"
+### Community 9 - "engine.py"
 Cohesion: 0.13
-Nodes (35): materialize(), Compile and cast to the canonical dtype of the (rigid) result type., LogicalQuery, SortSpec, agg_frame(), _aggregate(), count_frame(), domain_frame() (+27 more)
+Nodes (38): LogicalQuery, SortSpec, agg_frame(), _aggregate(), count_frame(), domain_frame(), finish_aggregate(), Finished (+30 more)
 
-### Community 10 - "reference.py"
-Cohesion: 0.16
-Nodes (32): functools, pivot_label(), Any, quantize(), aggregate_levels(), apply_mutations(), _binary(), _cast() (+24 more)
+### Community 10 - "verify/reference.py"
+Cohesion: 0.08
+Nodes (52): ComparePlan, Assumptions, Assumptions and limitations, Not supported yet, Out of scope, Choosing the two sides, Compare two sides, Gotchas (+44 more)
 
 ### Community 11 - ".register_scan"
-Cohesion: 0.16
-Nodes (15): Concepts, Formula language, Measures, Numbers, types and nulls, raw(), scan(), _check_keys(), content_version() (+7 more)
+Cohesion: 0.17
+Nodes (14): Checklist, Deploying on Kubernetes, Example, _check_keys(), _check_names(), content_version(), file_version(), Collection (+6 more)
 
 ### Community 12 - "Catalog"
-Cohesion: 0.18
+Cohesion: 0.19
 Nodes (13): Catalog, Thread-safe in-process catalog of in-memory frames and lazily scanned files.…, DataFrame, parametrize, Path, test_categorical_keys_become_strings_and_enums_become_strings(), test_editable_and_roles(), test_normalizes_dtypes_and_nan() (+5 more)
 
-### Community 13 - "DatasetRef"
-Cohesion: 0.23
-Nodes (10): ScenarioStep, The request for the pivot values, filtered by the filter model only (not by…, Translate a column filter model into one expression (``None`` if it filters…, Answer one SSRM ``getRows`` call end to end (engine: a :class:`CalcEngine`)., _type(), DatasetRef, Page, A dataset and, optionally, a pinned version (default: the latest registered). (+2 more)
+### Community 13 - "AgGridAdapter"
+Cohesion: 0.30
+Nodes (15): AgGridAdapter, _blank(), _date(), _equals(), _literal(), Any, LType, Node (+7 more)
 
 ### Community 14 - "docs_from_graph.py"
-Cohesion: 0.11
-Nodes (36): ack(), _clean(), _code(), digest(), find_stale(), front_matter_list(), generate(), Graph (+28 more)
+Cohesion: 0.08
+Nodes (49): argparse, numpy, book(), main(), Any, DataFrame, Latency benchmark for typical grid requests on a synthetic book of positions.…, timed() (+41 more)
 
-### Community 15 - "CalcContext"
-Cohesion: 0.11
-Nodes (21): Architecture, Design principles, The parts, Two evaluators, one plan, M, CalcContext, Who is asking, and what they may see. Supplied by the host service per request.…, _ms() (+13 more)
-
-### Community 16 - "pylibs_calc/__init__.py"
+### Community 15 - "ScenarioManager"
 Cohesion: 0.12
-Nodes (24): The life of a request, Python models, Quick start, Embeddable what-if calculation engine on Polars. Filters, overrides, shocks,…, Model, BaseModel, Frozen pydantic model that rejects unknown fields. Dumps always carry the…, CalcRequest (+16 more)
+Nodes (15): Gotchas, Over HTTP, Result, Saved scenarios and forks, Try it, What to notice, In the engine, parse_steps() (+7 more)
 
-### Community 17 - "Measure"
-Cohesion: 0.20
-Nodes (6): Measure, Pivot, Any, model_validator, An aggregate per group. ``where`` works like SQL ``FILTER (WHERE ...)``: it…, Split measures into one column per combination of ``on`` values. Result columns…
+### Community 16 - "spec/query.py"
+Cohesion: 0.09
+Nodes (31): The life of a request, Python models, Quick start, DatasetSchema, The request for the pivot values, filtered by the filter model only (not by…, _type(), CalcRequest, CompareRequest (+23 more)
 
-### Community 18 - "test_property.py"
-Cohesion: 0.07
-Nodes (48): composite, DataObject, From dataset to result, Inside the query, Order of evaluation, Why the order matters, 1. Register data and create an engine, 2. Ask a question (+40 more)
+### Community 17 - "ext.py"
+Cohesion: 0.14
+Nodes (16): field_validator, canonical_decimal(), decimal(), parse_decimal(), Shortest plain (non-exponent) text for a decimal; ``-0`` becomes ``0``., Parse a JSON number or numeric string into an exact decimal., AppliedTransform, Turn a pydantic error into a :class:`SpecError` with a JSON-pointer path. (+8 more)
 
-### Community 19 - "fingerprint"
-Cohesion: 0.13
-Nodes (18): Node, Fingerprint of everything in the context that changes results (for cache keys)., canonical_json(), fingerprint(), Any, Bring a raw request dict up to the current ``spec_version``., JSON-ready canonical form of a model, or of plain data containing models., SHA-256 of the canonical JSON, as hex. (+10 more)
+### Community 18 - "BindContext"
+Cohesion: 0.10
+Nodes (17): bind_fx(), Fx, fx_ladder(), FxBound, FxPlan, FxPlugin, Ladder, numbers_to_float() (+9 more)
 
-### Community 20 - "aggrid.py"
-Cohesion: 0.11
-Nodes (25): AgGridAdapter, CellEdit, ColumnVO, decode_group_key(), encode_group_key(), _Lenient, BaseModel, AG Grid Server-Side Row Model (SSRM) adapter. Pure translation; no web… (+17 more)
+### Community 19 - "Model"
+Cohesion: 0.29
+Nodes (6): model_serializer, Model, Any, BaseModel, Frozen pydantic model that rejects unknown fields. Dumps always carry the…, SerializerFunctionWrapHandler
+
+### Community 20 - "plan_mutations"
+Cohesion: 0.09
+Nodes (34): DataType, decimal_places(), _editable(), FormulaDef, LogicalMutations, OverrideBatch, plan_mutations(), flush() (+26 more)
 
 ### Community 21 - "book.py"
-Cohesion: 0.12
-Nodes (15): Quick start: total exposure per desk., Measures: exposure, counts and weighted yield per desk., Filtered measures: long and short notional side by side, like SQL FILTER (WHERE…, Post-aggregation: average price as a ratio of sums, and gross leverage per…, Having: only the desks whose gross exposure is over their limit of 400,000., Rollup: book -> region -> desk subtotals in one result., Sort and page: the five largest positions by absolute market value, then the…, Override: a trader corrects two marks, and only those cells change. (+7 more)
+Cohesion: 0.09
+Nodes (24): Quick start: total exposure per desk., Filter + derive: the EMEA positions and their notional., Measures: exposure, counts and weighted yield per desk., Filtered measures: long and short notional side by side, like SQL FILTER (WHERE…, Post-aggregation: average price as a ratio of sums, and gross leverage per…, Having: only the desks whose gross exposure is over their limit of 400,000., Rollup: book -> region -> desk subtotals in one result., Pivot: a desk x region exposure matrix, with row totals. (+16 more)
 
-### Community 22 - "Scenario"
-Cohesion: 0.18
-Nodes (8): LogEntry, BaseModel, Scenario, datetime, Scenario storage: the protocol, and a thread-safe in-memory implementation.…, Insert a new scenario (with initial entries when forking)., Append atomically if the log length is still ``expected_version``. Raises…, _Record
+### Community 22 - "Any"
+Cohesion: 0.17
+Nodes (10): _clip_type(), Fx, FxPlan, Ladder, _median_type(), _numeric(), Any, LazyFrame (+2 more)
 
 ### Community 23 - "create_router"
-Cohesion: 0.11
-Nodes (26): APIRouter, ContextResolver, DependsParam, Check the runtime, Install, Working on the library itself, _call(), create_router() (+18 more)
+Cohesion: 0.15
+Nodes (11): ContextResolver, DependsParam, Check the runtime, Install, Working on the library itself, create_router(), body_limit(), context() (+3 more)
 
 ### Community 24 - "exprs.py"
-Cohesion: 0.22
-Nodes (24): operator, as_type(), _binary(), _bool(), _cast(), compile_expr(), _convert_value(), dec_dtype() (+16 more)
+Cohesion: 0.17
+Nodes (30): Formulas are stored as trees, operator, as_type(), _binary(), _bool(), _cast(), compile_expr(), _convert_value() (+22 more)
 
-### Community 25 - "ScenarioManager"
-Cohesion: 0.23
-Nodes (8): What to notice, effective_steps(), LabeledStep, A scenario step plus where it came from (for error paths and lineage)., Drop ``Disable`` steps and the steps they disable. Sequence numbers start at…, Copy a scenario's effective steps (at a version) into a new, independent…, Recompute the hash chain; False means the stored log was altered., ScenarioManager
-
-### Community 26 - "VersionConflict"
-Cohesion: 0.22
-Nodes (9): A scenario append used a stale ``expected_version`` or pinned mismatching…, VersionConflict, Any, datetime, Redis-backed scenario store: shared by every replica of a service. Needs the…, RedisScenarioStore, _text(), Redis (+1 more)
-
-### Community 27 - "mutations.py"
+### Community 25 - "Kernel"
 Cohesion: 0.13
-Nodes (21): LogicalMutations, OverrideBatch, flush(), Consecutive overrides, compacted: column -> {key tuple: new value}. Last write…, ShockOp, apply_mutations(), _apply_overrides(), dtype_of() (+13 more)
+Nodes (16): Dataset, EngineName, frame_size(), DataFrame, Kernel, _page(), DataFrame, LazyFrame (+8 more)
 
-### Community 28 - "manager.py"
-Cohesion: 0.23
-Nodes (13): Saved what-if scenarios: append-only, hash-chained logs of steps over a dataset…, Creating, editing, forking and auditing scenarios, with validation and…, Start an empty scenario pinned to a dataset version (default: the latest)., entry_hash(), genesis_hash(), make_entries(), now(), datetime (+5 more)
-
-### Community 29 - "test_fastapi.py"
-Cohesion: 0.19
-Nodes (15): fastapi_testclient, io, client(), resolve(), fixture, parametrize, test_aggrid_rows_and_edit(), test_body_limit() (+7 more)
-
-### Community 30 - "ScenarioStore"
-Cohesion: 0.13
-Nodes (10): FixtureRequest, scenario_store(), Protocol, Raise :class:`ScenarioNotFound` if missing (soft-deleted scenarios are…, Log entries 1..upto (default: all)., Scenarios that are not deleted, oldest first., Soft delete: the log is kept for audit., ScenarioStore (+2 more)
-
-### Community 31 - ".collect"
-Cohesion: 0.18
-Nodes (9): InProcessQuery, _abandon(), _polars_message(), DataFrame, EngineName, Exception, LazyFrame, Collect ``lf``; past ``deadline`` (a ``time.monotonic()`` value) cancel and… (+1 more)
-
-### Community 32 - "Logic"
-Cohesion: 0.38
-Nodes (9): _blank(), _date(), _equals(), _literal(), Any, Node, col(), IsNull (+1 more)
-
-### Community 33 - "logical.py"
-Cohesion: 0.14
-Nodes (32): _and(), _col(), DerivePlan, FormulaDef, HiddenAgg, _materializable(), MeasurePlan, _order_formulas() (+24 more)
-
-### Community 34 - "catalog.py"
-Cohesion: 0.19
-Nodes (13): glob, hashlib, _check_names(), file_version(), normalize(), DataType, Datasets the engine can query, pinned to immutable versions. A catalog…, Cast to the engine's canonical dtypes and turn NaN/infinite floats into nulls.… (+5 more)
-
-### Community 35 - "errors.py"
-Cohesion: 0.23
-Nodes (14): Error codes, Exception classes, Scenario permissions, row(), CalcError, CalcTimeout, ComputeError, DatasetNotFound (+6 more)
-
-### Community 36 - "exec.py"
+### Community 26 - "Scenario"
 Cohesion: 0.11
-Nodes (17): contextlib, math, Performance and deployment, cgroup_cpu_limit(), Running Polars plans: concurrency slots, timeouts with cancellation, runtime…, Compare the Polars thread pool with the container's CPU limit (cgroup v1 or…, CPU limit from cgroup v2 ``cpu.max`` or v1 ``cpu.cfs_quota_us``; None if…, runtime_check() (+9 more)
+Nodes (25): Errors raised by the what-if plugin., Saved what-if scenarios: append-only, hash-chained logs of steps over a dataset…, Creating, editing, forking and auditing scenarios, with validation and…, Start an empty scenario pinned to a dataset version (default: the latest)., entry_hash(), genesis_hash(), LogEntry, make_entries() (+17 more)
 
-### Community 37 - "spec/query.py"
+### Community 27 - "adapters/aggrid.py"
+Cohesion: 0.12
+Nodes (22): ColumnVO, decode_group_key(), encode_group_key(), _Lenient, BaseModel, AG Grid Server-Side Row Model (SSRM) adapter. Pure translation; no web…, How to decorate result rows for the grid., Answer one SSRM ``getRows`` call end to end (engine: a :class:`CalcEngine`). (+14 more)
+
+### Community 28 - "TransformPlan"
+Cohesion: 0.09
+Nodes (19): ABC, HTTP routes, Operations, The extension points, Transforms, Bound, Any, LazyFrame (+11 more)
+
+### Community 29 - "golden.py"
+Cohesion: 0.31
+Nodes (7): check(), Any, Golden cases: requests over the example book with their expected results. Each…, run_case(), update(), json, test_grid_rows_see_a_scenario()
+
+### Community 30 - "test_scenarios.py"
+Cohesion: 0.23
+Nodes (21): fakeredis, engine(), prices(), Any, Catalog, scenarios(), shock(), test_authorization_hook() (+13 more)
+
+### Community 31 - "exec.py"
+Cohesion: 0.08
+Nodes (23): contextlib, InProcessQuery, math, _abandon(), cgroup_cpu_limit(), _polars_message(), DataFrame, EngineName (+15 more)
+
+### Community 32 - "CalcContext"
+Cohesion: 0.09
+Nodes (17): The parts, 3. An operation, M, CalcContext, Node, Who is asking, and what they may see. Supplied by the host service per request.…, Fingerprint of everything in the context that changes results (for cache keys)., _ms() (+9 more)
+
+### Community 33 - "SpecError"
+Cohesion: 0.12
+Nodes (35): Functions and aggregates, _and(), check_name(), _col(), DerivePlan, HiddenAgg, materializable(), MeasurePlan (+27 more)
+
+### Community 34 - "from_polars"
 Cohesion: 0.21
-Nodes (8): datetime, Results: the frame plus metadata that makes it reproducible and auditable., Base model for every spec object: immutable, strict about unknown fields, self-…, Queries (views) and the top-level requests. A query runs its stages in a fixed…, Decimal, Scenario steps: what-if changes that keep every row of the dataset. A scenario…, The multiplier for ``mul``/``pct`` (``pct`` 5 means ``* 1.05``)., pydantic
+Nodes (11): raw(), scan(), normalize(), DataType, LazyFrame, Cast to the engine's canonical dtypes and turn NaN/infinite floats into nulls.…, from_polars(), normalized_dtype() (+3 more)
 
-### Community 39 - ".append"
+### Community 35 - "pylibs_calc/__init__.py"
+Cohesion: 0.13
+Nodes (23): Error codes, Exception classes, Exception, CalcError, CalcTimeout, ComputeError, DatasetNotFound, EngineBusy (+15 more)
+
+### Community 36 - "calc/tests/test_aggrid.py"
 Cohesion: 0.28
-Nodes (8): Turn a pydantic error into a :class:`SpecError` with a JSON-pointer path., validation_error(), run(), parse_steps(), Any, ScenarioStep, Validate and append steps. Fails with a 409 if someone else appended first., ValidationError
+Nodes (15): column(), Any, parametrize, rows(), ssrm(), test_custom_aggregation(), test_drill_down_with_null_group_key(), test_filters() (+7 more)
 
-### Community 40 - "expr.py"
+### Community 38 - "EngineConfig"
 Cohesion: 0.21
-Nodes (19): Formulas are stored as trees, keyword, _Checker, Type checking: turns an expression tree into a :class:`Typed` tree against a…, Binary, Compare, Func, IfElse (+11 more)
+Nodes (9): DatasetCatalog, EngineConfig, Engine-wide settings. ``authorize(ctx, action, resource)`` is called by plugins…, Catalog, test_engine_busy(), test_group_limit(), test_on_result_hook(), test_pivot_with_explicit_domain_and_limits() (+1 more)
 
-### Community 41 - "Ratios after aggregation"
+### Community 39 - "LType"
+Cohesion: 0.23
+Nodes (10): BinaryOp, arith_result(), common_type(), _conflict(), LType, _numeric_common(), The type two values are compared, coalesced or chosen between as (no scale…, Result type of ``a <op> b``. Operands are cast to ``common_type`` first (see… (+2 more)
+
+### Community 40 - "Ratios after aggregation"
 Cohesion: 0.17
 Nodes (10): Gotchas, Ratios after aggregation, Result, Try it, What to notice, Gotchas, Result, Subtotals (rollup) (+2 more)
 
-### Community 42 - "LType"
-Cohesion: 0.17
-Nodes (17): BinaryOp, Enum, arith_result(), common_type(), _conflict(), decimal(), _json_repr(), json_value() (+9 more)
+### Community 41 - "Write a plugin"
+Cohesion: 0.28
+Nodes (7): 1. Functions and aggregates, 2. A transform, 4. The plugin, 5. Use it, Checklist, Test it against the reference, Write a plugin
 
-### Community 44 - "Formula language"
-Cohesion: 0.18
-Nodes (9): Cheat sheet, Errors, Formula language, Functions, Gotchas, Measures, Result, Try it (+1 more)
+### Community 42 - "compare.py"
+Cohesion: 0.31
+Nodes (7): compare_frame(), ComparePlan, plan_compare(), LazyFrame, Two-way compare: join a target and a base result, with deltas typed like any…, NumericConfig, Engine-wide numeric settings; they are part of every result fingerprint.
+
+### Community 44 - "Errors and limits"
+Cohesion: 0.09
+Nodes (20): Cheat sheet, Errors, Formula language, Functions, Minimal requests, Request schema, Versions, Errors and limits (+12 more)
 
 ### Community 45 - "Contributing to the docs"
 Cohesion: 0.12
 Nodes (12): Adding a feature page, Commands, Contributing to the docs, How the graph keeps the docs in step, Layout, Style, How these docs are organized, py-libs (+4 more)
 
 ### Community 46 - "fastapi.py"
-Cohesion: 0.18
-Nodes (10): fastapi, fastapi_params, fastapi_responses, get, index(), DataFrame, Demo service: pylibs-calc behind FastAPI with an AG Grid (server-side row…, Deterministic pseudo-random positions (no numpy needed). (+2 more)
+Cohesion: 0.24
+Nodes (8): fastapi, fastapi_params, fastapi_responses, get, FastAPI router exposing a :class:`CalcEngine` (``pip install 'pylibs-…, index(), Demo service: pylibs-calc with the what-if plugin behind FastAPI, and an AG…, scenario_store()
 
-### Community 47 - "engine"
-Cohesion: 0.12
-Nodes (9): Filter + derive: the EMEA positions and their notional., Shocks: Tech prices +5%, and yields +25bp on every bond., Disable: undo a saved step without rewriting history., Saved scenarios: create, append with optimistic locking, read old versions,…, Access control: a Rates trader sees only Rates rows and no yields., Audit a number: fingerprint, explain, and the independent reference evaluator., Errors and limits: every refusal has a stable code, a JSON-pointer path and an…, engine() (+1 more)
-
-### Community 49 - "audit.md"
-Cohesion: 0.25
-Nodes (5): Also useful, Audit a number, Result, The three tools, Try it
+### Community 49 - "testing-guide.md"
+Cohesion: 0.29
+Nodes (5): Golden cases, Exploratory testing checklist, Test a service built on the engine, Testing guide, What to test, and how
 
 ### Community 54 - "Numbers, types and nulls"
-Cohesion: 0.14
-Nodes (12): Exact decimals, Float sums and reproducibility, Floats and decimals never mix silently, Invalid arithmetic gives null, Nulls follow SQL, Numbers, types and nulls, Settings, Shocks keep the column's type (+4 more)
+Cohesion: 0.17
+Nodes (10): Exact decimals, Float sums and reproducibility, Floats and decimals never mix silently, Invalid arithmetic gives null, Nulls follow SQL, Numbers, types and nulls, Settings, Shocks keep the column's type (+2 more)
 
-### Community 55 - "Limits"
-Cohesion: 0.16
-Nodes (14): Checklist, Deploying on Kubernetes, Example, Reporting a problem, Troubleshooting, Limits, Hard caps that keep a single request from exhausting a pod. Exceeding one is a…, EngineConfig (+6 more)
+### Community 55 - "PlanContext"
+Cohesion: 0.22
+Nodes (5): PlanContext, DataFrame, NumericConfig, What a transform sees when it is planned against a dataset version., Run a (small) query under the engine's concurrency limit and the request…
 
 ### Community 56 - "Python API"
-Cohesion: 0.14
-Nodes (13): Data, Engine, Errors, Formulas and fingerprints, Integrations, Protocols, Python API, Requests (+5 more)
+Cohesion: 0.15
+Nodes (13): Data, Engine, Errors, Formulas and fingerprints, Integrations, Plugin API, Protocols, Python API (+5 more)
 
 ### Community 57 - "Filtered measures"
 Cohesion: 0.17
 Nodes (10): Filtered measures, Gotchas, Result, Try it, What to notice, Gotchas, Having, Result (+2 more)
 
-### Community 58 - "bench.py"
-Cohesion: 0.22
-Nodes (10): argparse, numpy, book(), main(), Any, DataFrame, Latency benchmark for typical grid requests on a synthetic book of positions.…, timed() (+2 more)
+### Community 58 - "json_safe"
+Cohesion: 0.38
+Nodes (4): A JSON-ready value: results as ``{"rows", "meta"}``, models dumped., json_safe(), Any, JSON-safe rows: decimals as floats (or exact strings), dates as ISO strings,…
 
-### Community 59 - "DatasetCatalog"
-Cohesion: 0.20
-Nodes (8): Datasets and the catalog, Datasets without a key, Registering data, Versions, Your own catalog, DatasetCatalog, Protocol, What the engine needs from a catalog; implement it to serve datasets your own…
+### Community 59 - "DatasetSchema"
+Cohesion: 0.15
+Nodes (12): Datasets and the catalog, Datasets without a key, Registering data, Versions, What registration does, Your own catalog, DatasetCatalog, Protocol (+4 more)
 
 ### Community 60 - "build_schema"
 Cohesion: 0.29
 Nodes (6): build_schema(), Collection, DataType, Role, The schema as seen by a caller limited to ``allowed`` columns (keys always…, Describe a dataset. Numeric columns default to measures, the rest to…
 
-### Community 61 - "ColRef"
-Cohesion: 0.15
-Nodes (19): _coerce(), ColRef, Any, _alias_keywords(), parse_formula(), Render an expression tree as formula text (for display, lineage and error…, Parse a formula into an expression tree, or raise :class:`SpecError`., Rename keyword tokens used as column names (``yield``) so Python's parser… (+11 more)
+### Community 61 - "expr.py"
+Cohesion: 0.12
+Nodes (29): children(), _coerce(), col(), ColRef, columns(), depth(), Node, Expression tree: the canonical, JSON-serializable form of every formula.… (+21 more)
 
 ### Community 62 - "Dataset"
 Cohesion: 0.22
-Nodes (4): Dataset, LazyFrame, One immutable version of a dataset., Keyless datasets carry a hidden ``__row`` column so row views have a total…
+Nodes (3): Dataset, One immutable version of a dataset., Keyless datasets carry a hidden ``__row`` column so row views have a total…
 
 ### Community 63 - "hooks.py"
 Cohesion: 0.39
 Nodes (7): on_config(), on_page_markdown(), on_pre_build(), Any, MkDocs hooks: make the examples importable, and flag pages the code has moved…, _sync_module(), importlib_util
 
-### Community 64 - "fastapi.md"
-Cohesion: 0.21
-Nodes (5): Golden cases, Exploratory testing checklist, Test a service built on the engine, Testing guide, What to test, and how
+### Community 64 - "calc/tests/test_compare.py"
+Cohesion: 0.29
+Nodes (6): Catalog, DataFrame, test_compare_rejects_pivot(), test_compare_two_dataset_versions(), test_compare_with_itself_has_no_deltas(), test_unknown_extensions_are_rejected()
 
-### Community 65 - "Call the API with curl"
-Cohesion: 0.22
+### Community 65 - "plugins.md"
+Cohesion: 0.16
 Nodes (8): All routes, Call the API with curl, Discover the data, Get exact decimals, or Arrow, Run a query, See how a number is computed, Try a what-if, When something is wrong
 
-### Community 66 - "golden.py"
-Cohesion: 0.18
-Nodes (13): check(), Any, Golden cases: requests over the example book with their expected results. Each…, run_case(), update(), json, os, pathlib (+5 more)
+### Community 66 - "pylibs-calc-whatif"
+Cohesion: 0.33
+Nodes (5): Limits, pylibs-calc-whatif, Quick start, Saved scenarios, Steps
 
-### Community 67 - "Lit"
-Cohesion: 0.14
-Nodes (14): field_validator, ComparePlan, plan_compare(), Two-way compare: join a target and a base result, with deltas typed like any…, canonical_decimal(), parse_decimal(), Shortest plain (non-exponent) text for a decimal; ``-0`` becomes ``0``., Parse a JSON number or numeric string into an exact decimal. (+6 more)
+### Community 67 - "body_extensions"
+Cohesion: 0.29
+Nodes (7): body_extensions(), aggrid_rows(), run(), distinct(), run(), Any, The ``extensions`` of a request body; version 1 ``scenario``/``what_if`` keys…
 
 ### Community 68 - "Access control"
-Cohesion: 0.40
-Nodes (5): Access control, Result, Try it, What to notice, Wiring it into FastAPI
-
-### Community 69 - "Pivot"
 Cohesion: 0.33
-Nodes (6): Gotchas, Options, Pivot, Result, Try it, What to notice
+Nodes (6): Access control, Result, Scenario permissions (what-if plugin), Try it, What to notice, Wiring it into FastAPI
 
-### Community 70 - "SpecError"
-Cohesion: 0.18
-Nodes (14): What registration does, _check_name(), _editable(), plan_mutations(), Validate scenario steps (``Disable`` already resolved) against a dataset schema., coerce_value(), Any, Convert a JSON scalar into the Python value a column of ``ltype`` holds.… (+6 more)
-
-### Community 71 - "Saved scenarios and forks"
+### Community 69 - "Audit a number"
 Cohesion: 0.40
-Nodes (5): Gotchas, Over HTTP, Result, Saved scenarios and forks, Try it
+Nodes (5): Also useful, Audit a number, Result, The three tools, Try it
+
+### Community 70 - "Sort and page"
+Cohesion: 0.40
+Nodes (5): Gotchas, Result, Sort and page, Try it, What to notice
+
+### Community 71 - "ScenarioStore"
+Cohesion: 0.08
+Nodes (18): Durability, How it works, Redis scenario store, Testing, Coming from version 0.1, Limits, The request block, What-if plugin (+10 more)
 
 ### Community 72 - "Shock a column"
 Cohesion: 0.33
 Nodes (6): Gotchas, Result, Shock a column, The operations, Try it, What to notice
 
-### Community 73 - "FastAPI"
-Cohesion: 0.40
-Nodes (5): Errors, FastAPI, Options, Routes, Threading
+### Community 73 - "calc_whatif/tests/test_compare.py"
+Cohesion: 0.50
+Nodes (4): shock(), test_aggregated_compare(), test_compare_two_what_ifs_with_rollup(), test_row_level_compare_and_zero_base()
 
 ### Community 74 - "Disable a step"
 Cohesion: 0.40
 Nodes (5): Disable a step, Gotchas, Result, Try it, What to notice
 
 ### Community 75 - "positions"
-Cohesion: 0.40
-Nodes (5): Pages, Scenarios by feature, The example book, positions(), DataFrame
-
-### Community 76 - "_Converter"
 Cohesion: 0.29
-Nodes (7): AST, Call, Constant, _Converter, expr, Node, UnaryOp
+Nodes (7): Core engine, Pages, Scenarios by feature, The example book, What-if plugin, positions(), DataFrame
+
+### Community 76 - "formula.py"
+Cohesion: 0.16
+Nodes (18): AST, Call, Constant, keyword, IfElse, InList, ``arg in (values...)``; the values are non-null literals., ``then if cond else otherwise``; a null condition picks ``otherwise``. (+10 more)
 
 ### Community 77 - "request_of"
 Cohesion: 0.40
@@ -411,9 +439,13 @@ Nodes (5): curl(), Any, Read the literal ``REQUEST = {...}`` from an example scr
 Cohesion: 0.50
 Nodes (4): AG Grid, Client setup, Customizing the adapter, Gotchas
 
-### Community 80 - "InMemoryScenarioStore"
+### Community 79 - "_call"
 Cohesion: 0.24
-Nodes (7): Durability, How it works, Redis scenario store, Testing, ScenarioNotFound, InMemoryScenarioStore, Process-local store for tests and single-replica services.
+Nodes (10): _call(), call_operation(), dataset_schema(), run_compare(), run_explain(), run_query(), T, JSON (or Arrow, if ``accept`` asks for it) with the fingerprint headers. (+2 more)
+
+### Community 80 - "WhatIfPlugin"
+Cohesion: 0.08
+Nodes (36): Python API at a glance, importlib_metadata, CellEdit, edit_to_override(), BaseModel, DatasetSchema, AG Grid cell edits as what-if overrides (grid set up with ``readOnlyEdit:…, The useful part of AG Grid's ``CellEditRequestEvent``. (+28 more)
 
 ### Community 81 - "Run the demo grid"
 Cohesion: 0.67
@@ -423,65 +455,141 @@ Nodes (3): Run the demo grid, Start it, Things to try
 Cohesion: 0.67
 Nodes (3): A request at a glance, pylibs-calc, What it does
 
-### Community 83 - "._check"
-Cohesion: 0.33
-Nodes (6): lit_type(), _mismatch(), _need_bool(), _need_kind(), _need_numeric(), Node
-
-### Community 84 - "pylibs-calc"
-Cohesion: 0.29
-Nodes (6): AG Grid (server-side row model), FastAPI, Not supported yet, pylibs-calc, Scenarios, versions and concurrency, Verifiability
-
-### Community 85 - "columns"
-Cohesion: 0.36
-Nodes (8): children(), columns(), depth(), Node, Names of all columns an expression reads., Substitute column references (used to inline formula definitions)., replace_columns(), walk()
-
-### Community 86 - "filter-derive.md"
+### Community 83 - "validate.py"
 Cohesion: 0.17
-Nodes (10): Filter and derive, Gotchas, Result, Try it, What to notice, Gotchas, Result, Sort and page (+2 more)
+Nodes (21): Kind, Budget, check(), check_predicate(), _Checker, lit_type(), _mismatch(), _need_bool() (+13 more)
 
-### Community 87 - "Executor"
+### Community 84 - "Concepts"
+Cohesion: 0.17
+Nodes (11): AG Grid (server-side row model), Compare, Concepts, FastAPI, Formula language, Measures, Not supported yet, Numbers, types and nulls (+3 more)
+
+### Community 86 - "Filter and derive"
 Cohesion: 0.40
-Nodes (4): EngineBusy, No execution slot became free before the queue timeout., Executor, Hold one execution slot, or raise :class:`EngineBusy` after the queue timeout.
+Nodes (5): Filter and derive, Gotchas, Result, Try it, What to notice
 
-### Community 88 - "CalcResult"
-Cohesion: 0.11
-Nodes (14): 4. Read the metadata, Minimal requests, Request schema, What to notice, The measure functions, CalcResult, ColumnInfo, Any (+6 more)
-
-### Community 89 - "Errors and limits"
-Cohesion: 0.40
-Nodes (5): Errors and limits, Limits, Result, Time and load, Try it
-
-### Community 90 - "._keep_kind"
-Cohesion: 0.50
-Nodes (3): model_serializer, Any, SerializerFunctionWrapHandler
-
-### Community 91 - "Performance"
+### Community 87 - "Performance"
 Cohesion: 0.50
 Nodes (3): Benchmarks, Guidance, Performance
 
-### Community 92 - "_result_response"
+### Community 88 - "CalcResult"
+Cohesion: 0.15
+Nodes (9): Hand a result to ``EngineConfig.on_result``; every call should end here., CalcResult, BaseModel, DataFrame, Everything needed to reproduce, audit or cache a result. ``fingerprint`` is the…, The frame as an Arrow IPC stream (exact decimals, no JSON overhead)., ResultMeta, The same query at several FX rates, stacked with a ``rate`` column. (+1 more)
+
+### Community 89 - "RedisScenarioStore"
+Cohesion: 0.28
+Nodes (6): ScenarioNotFound, Any, datetime, RedisScenarioStore, _text(), Redis
+
+### Community 90 - "add_routes"
+Cohesion: 0.20
+Nodes (14): What plugin route hooks get besides the router (see ``Registry.add_routes``).…, RouterKit, add_routes(), aggrid_edit(), run(), append_steps(), create_scenario(), delete_scenario() (+6 more)
+
+### Community 91 - "dtypes.py"
+Cohesion: 0.10
+Nodes (28): collections, collections_abc, dataclasses, datetime, decimal, A custom plugin: report in USD with FX rates by region, and an FX sensitivity…, Enum, glob (+20 more)
+
+### Community 92 - "verify"
+Cohesion: 0.25
+Nodes (8): Any, verify(), VerifyReport, test_deterministic_float_sums(), test_plugin_aggregate_with_rollup_and_pivot(), test_plugin_function(), test_transform(), test_composite_keys()
+
+### Community 93 - "measures"
+Cohesion: 0.06
+Nodes (45): From dataset to result, Inside the query, Inside the what-if transform, Order of evaluation, Why the order matters, Errors, FastAPI, Options (+37 more)
+
+### Community 94 - "plugin.py"
+Cohesion: 0.14
+Nodes (13): effective_steps(), LabeledStep, Drop ``Disable`` steps and the steps they disable. Sequence numbers start at…, A scenario step plus where it came from (for error paths and lineage)., Any, LazyFrame, LType, The ``whatif`` plugin: a dataset transform plus saved scenarios, routes and… (+5 more)
+
+### Community 95 - "check_pages"
 Cohesion: 0.50
-Nodes (4): run_compare(), run_query(), _result_response(), Response
+Nodes (4): check_pages(), Any, Paging through a view yields each row exactly once, in the unpaged order., test_pages_partition_the_view()
+
+### Community 96 - "Registry"
+Cohesion: 0.20
+Nodes (5): A dataset transform, enabled per request by ``extensions[name]``. ``model``…, Everything the engine's plugins registered. Names are unique across plugins., Registry, TransformDef, Named
+
+### Community 97 - "synthetic_book"
+Cohesion: 0.50
+Nodes (3): DataFrame, Deterministic pseudo-random positions (no numpy needed)., synthetic_book()
+
+### Community 98 - "test_plugin.py"
+Cohesion: 0.21
+Nodes (13): _imports(), Catalog, Model, Path, The what-if plugin through the plugin API: request shape, composition,…, test_a_plugin_instance_belongs_to_one_engine(), test_core_does_not_know_the_plugin(), test_limits() (+5 more)
+
+### Community 99 - "UsdBound"
+Cohesion: 0.21
+Nodes (6): Any, Decimal, LazyFrame, LType, UsdBound, UsdPlan
+
+### Community 100 - "pathlib"
+Cohesion: 0.22
+Nodes (8): CaptureFixture, parametrize, Run every documentation example, so a change that breaks the docs also breaks…, test_example_runs(), test_golden_cases(), MonkeyPatch, pathlib, runpy
+
+### Community 101 - "plugins.py"
+Cohesion: 0.20
+Nodes (8): P, An installed plugin, by name or by class., build_registry(), OperationDef, Plugin, The plugin API: how analyses are built on top of the core calculation engine.…, A new engine call: ``engine.call(name, request, ctx)`` parses ``request`` with…, Base class for plugins. Subclasses set ``name`` and ``version`` and override…
+
+### Community 102 - ".register"
+Cohesion: 0.17
+Nodes (8): Version 2 moved what-if into the ``whatif`` plugin: ``scenario``, ``what_if``…, _v1_to_v2(), block(), fx_routes(), FxPlugin, DataObject, given, test_plugin_computations_match_reference()
+
+### Community 103 - "Architecture"
+Cohesion: 0.67
+Nodes (3): Architecture, Design principles, Two evaluators, one plan
+
+### Community 104 - "calc/tests/conftest.py"
+Cohesion: 0.46
+Nodes (7): catalog(), engine(), frame(), positions_frame(), DataFrame, fixture, A small book of positions with every kind of column, nulls included.
+
+### Community 105 - "engine"
+Cohesion: 0.43
+Nodes (7): catalog(), engine(), frame(), positions_frame(), DataFrame, fixture, A small book of positions with every kind of column, nulls included.
+
+### Community 107 - "Formula columns"
+Cohesion: 0.33
+Nodes (6): `derive` or `formula`?, Formula columns, Gotchas, Result, Try it, What to notice
+
+### Community 108 - "release_info.py"
+Cohesion: 0.22
+Nodes (7): os, main(), Resolve a release tag like ``core/v0.2.0`` to the package it releases.…, resolve(), subprocess, sys, tomllib
+
+### Community 109 - "check_rollup_totals"
+Cohesion: 0.67
+Nodes (3): check_rollup_totals(), Each subtotal of an additive measure (sum, count) equals the sum of its…, test_rollup_orders_subtotals_after_details()
+
+### Community 110 - "Quick start"
+Cohesion: 0.33
+Nodes (6): 1. Register data and create an engine, 2. Ask a question, 3. Ask "what if?", 4. Read the metadata, Next steps, Quick start
+
+### Community 112 - "Override a cell"
+Cohesion: 0.40
+Nodes (5): Gotchas, Override a cell, Result, Try it, What to notice
+
+### Community 113 - "PluginError"
+Cohesion: 0.18
+Nodes (11): Installing plugins, Plugins, What a plugin may import, Package it, discover_plugins(), PluginError, Instantiate every installed plugin advertised under the ``pylibs_calc.plugins``…, A plugin is misconfigured (e.g. two plugins register the same name). (+3 more)
+
+### Community 114 - "test_plugins.py"
+Cohesion: 0.14
+Nodes (16): fx_engine(), FxBound, Catalog, fixture, parametrize, The plugin API, exercised by a small FX plugin: a function, an aggregate, a…, test_attach_and_lookup(), test_bind_context_is_passed() (+8 more)
 
 ## Knowledge Gaps
-- **146 isolated node(s):** `pylibs-calc`, `pylibs-core`, `pylibs-utils`, `What this is`, `Commands` (+141 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 479 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **160 isolated node(s):** `What this is`, `Commands`, `Code knowledge graph (graphify)`, `Documentation`, `Architecture and conventions` (+155 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 613 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **20 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `CalcEngine` connect `CalcEngine` to `engine.py`, `pytest`, `compile/query.py`, `Catalog`, `DatasetRef`, `CalcContext`, `pylibs_calc/__init__.py`, `test_property.py`, `Scenario`, `create_router`, `ScenarioManager`, `VersionConflict`, `mutations.py`, `manager.py`, `test_fastapi.py`, `ScenarioStore`, `errors.py`, `ResultCache`, `LType`, `fastapi.py`, `engine`, `bench.py`, `DatasetCatalog`, `ColRef`, `Dataset`, `SpecError`, `Executor`, `CalcResult`?**
-  _High betweenness centrality (0.164) - this node is a cross-community bridge._
-- **Why does `CalcContext` connect `CalcContext` to `engine.py`, `CalcEngine`, `DatasetRef`, `pylibs_calc/__init__.py`, `test_property.py`, `fingerprint`, `aggrid.py`, `Scenario`, `create_router`, `ScenarioManager`, `manager.py`, `test_fastapi.py`, `.append`, `scenarios/index.md`, `fastapi.py`, `Numbers, types and nulls`, `Limits`, `fastapi.md`, `Access control`, `pylibs-calc`?**
-  _High betweenness centrality (0.086) - this node is a cross-community bridge._
-- **Why does `SpecError` connect `SpecError` to `engine.py`, `CalcEngine`, `compile/query.py`, `.register_scan`, `Catalog`, `DatasetRef`, `CalcContext`, `pylibs_calc/__init__.py`, `fingerprint`, `aggrid.py`, `exprs.py`, `ScenarioManager`, `manager.py`, `Logic`, `logical.py`, `catalog.py`, `errors.py`, `.append`, `expr.py`, `LType`, `build_schema`, `ColRef`, `Lit`, `_Converter`, `._check`?**
-  _High betweenness centrality (0.083) - this node is a cross-community bridge._
-- **Are the 39 inferred relationships involving `CalcEngine` (e.g. with `Your own catalog` and `main()`) actually correct?**
-  _`CalcEngine` has 39 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 49 inferred relationships involving `LType` (e.g. with `AgGridAdapter` and `_blank()`) actually correct?**
-  _`LType` has 49 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 9 inferred relationships involving `SpecError` (e.g. with `Exception classes` and `AgGridAdapter`) actually correct?**
-  _`SpecError` has 9 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 13 inferred relationships involving `CalcContext` (e.g. with `Glossary` and `Assumptions`) actually correct?**
-  _`CalcContext` has 13 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `CalcEngine` connect `CalcEngine` to `pytest`, `engine.py`, `Catalog`, `docs_from_graph.py`, `spec/query.py`, `book.py`, `create_router`, `golden.py`, `test_scenarios.py`, `CalcContext`, `SpecError`, `pylibs_calc/__init__.py`, `calc/tests/test_aggrid.py`, `EngineConfig`, `fastapi.py`, `ResultCache`, `DatasetSchema`, `expr.py`, `calc/tests/test_compare.py`, `body_extensions`, `calc_whatif/tests/test_compare.py`, `WhatIfPlugin`, `CalcResult`, `add_routes`, `dtypes.py`, `verify`, `measures`, `check_pages`, `Registry`, `plugins.py`, `.register`, `calc/tests/conftest.py`, `engine`, `.schema`, `check_rollup_totals`, `.attach`, `PluginError`, `test_plugins.py`?**
+  _High betweenness centrality (0.134) - this node is a cross-community bridge._
+- **Why does `SpecError` connect `SpecError` to `canonical.py`, `CalcEngine`, `engine.py`, `.register_scan`, `Catalog`, `AgGridAdapter`, `ScenarioManager`, `spec/query.py`, `ext.py`, `BindContext`, `plan_mutations`, `exprs.py`, `Kernel`, `adapters/aggrid.py`, `pylibs_calc/__init__.py`, `LType`, `Write a plugin`, `compare.py`, `DatasetSchema`, `build_schema`, `expr.py`, `formula.py`, `WhatIfPlugin`, `validate.py`, `dtypes.py`, `plugin.py`?**
+  _High betweenness centrality (0.116) - this node is a cross-community bridge._
+- **Why does `CalcContext` connect `CalcContext` to `pytest`, `CalcEngine`, `engine.py`, `verify/reference.py`, `AgGridAdapter`, `ScenarioManager`, `BindContext`, `plan_mutations`, `create_router`, `Kernel`, `Scenario`, `adapters/aggrid.py`, `test_scenarios.py`, `pylibs_calc/__init__.py`, `EngineConfig`, `scenarios/index.md`, `fastapi.py`, `testing-guide.md`, `PlanContext`, `Access control`, `Concepts`, `CalcResult`, `add_routes`, `dtypes.py`, `verify`, `measures`, `plugins.py`, `.schema`?**
+  _High betweenness centrality (0.057) - this node is a cross-community bridge._
+- **Are the 25 inferred relationships involving `CalcEngine` (e.g. with `The parts` and `Your own catalog`) actually correct?**
+  _`CalcEngine` has 25 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 21 inferred relationships involving `SpecError` (e.g. with `2. A transform` and `Exception classes`) actually correct?**
+  _`SpecError` has 21 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 19 inferred relationships involving `CalcContext` (e.g. with `Glossary` and `Assumptions`) actually correct?**
+  _`CalcContext` has 19 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 22 inferred relationships involving `Kernel` (e.g. with `The parts` and `Operations`) actually correct?**
+  _`Kernel` has 22 INFERRED edges - model-reasoned connections that need verification._

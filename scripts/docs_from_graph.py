@@ -2,14 +2,15 @@
 
 Reads ``graphify-out/graph.json`` and:
 
-1. writes ``docs/calc/reference/generated/components.md``: a map of the package's modules, their
-   public classes and functions, what depends on what and which components are used most;
+1. writes ``docs/calc/reference/generated/components.md``: a map of the modules of
+   ``pylibs-calc`` and its plugin packages (``pylibs-calc-whatif``), their public classes and
+   functions, what depends on what and which components are used most;
 2. finds hand-written pages that may be out of date. A page lists the source files it explains
    in its front matter (``covers:``). When the public surface of one of those files changes in
    the graph (symbols added or removed, docstrings changed, calls to other modules changed),
    the page is listed in ``docs/calc/reference/generated/stale.md`` and gets a warning banner on
    the site until someone reviews it and runs ``--ack``;
-3. lists public names (``pylibs_calc.__all__``) that no page mentions.
+3. lists public names (``__all__`` of each package) that no page mentions.
 
 Only code nodes under ``packages/*/src`` are used, so documentation nodes in the graph never feed
 back into the output. The output has no timestamps: the same graph always gives the same files.
@@ -38,7 +39,12 @@ GRAPH = ROOT / "graphify-out" / "graph.json"
 DOCS = ROOT / "docs"
 STATE = DOCS / ".docs-sync.json"
 PACKAGE = "calc"
-SRC = f"packages/{PACKAGE}/src/pylibs_{PACKAGE}/"
+# The core package first, then its plugin packages; each maps its source root to its import name.
+SOURCES = {
+    f"packages/{PACKAGE}/src/pylibs_{PACKAGE}/": f"pylibs_{PACKAGE}",
+    f"packages/{PACKAGE}_whatif/src/pylibs_{PACKAGE}_whatif/": f"pylibs_{PACKAGE}_whatif",
+}
+SRC = next(iter(SOURCES))
 GENERATED = DOCS / PACKAGE / "reference" / "generated"
 COMPONENTS = GENERATED / "components.md"
 STALE = GENERATED / "stale.md"
@@ -96,7 +102,7 @@ def load_graph(path: Path = GRAPH) -> Graph:
     links = raw["links"]
 
     def in_package(node: dict[str, Any]) -> bool:
-        return node.get("file_type") == "code" and str(node.get("source_file", "")).startswith(SRC)
+        return node.get("file_type") == "code" and source_root(str(node.get("source_file", "")))
 
     modules: dict[str, Module] = {}
     for node in nodes.values():
@@ -129,7 +135,7 @@ def load_graph(path: Path = GRAPH) -> Graph:
     docs_at = {
         (n["source_file"], _line(n.get("source_location"))): n["label"]
         for n in nodes.values()
-        if n.get("file_type") == "rationale" and str(n.get("source_file", "")).startswith(SRC)
+        if n.get("file_type") == "rationale" and source_root(str(n.get("source_file", "")))
     }
     for sym in symbols.values():
         sym.doc = docs_at.get((sym.file, sym.line + 1), "")
@@ -157,6 +163,11 @@ def load_graph(path: Path = GRAPH) -> Graph:
 
     module_of = {**module_ids, **{s.id: s.file for s in symbols.values()}}
     return Graph(raw.get("built_at_commit") or "unknown", modules, nodes, links, module_of)
+
+
+def source_root(file: str) -> str:
+    """The package source root a file belongs to ("" if none)."""
+    return next((root for root in SOURCES if file.startswith(root)), "")
 
 
 def _line(location: str | None) -> int:
@@ -190,15 +201,20 @@ def third_party_imports(path: Path) -> set[str]:
 
 
 def group_of(file: str) -> str:
-    """``compile/query.py`` -> ``compile``; ``engine.py`` -> ``engine``."""
+    """``compile/query.py`` -> ``compile``; ``engine.py`` -> ``engine``; a plugin package is one
+    group, e.g. ``plugin_whatif``."""
+    root = source_root(file)
+    if root != SRC:
+        return "plugin_" + SOURCES[root].removeprefix(f"pylibs_{PACKAGE}_")
     rel = file.removeprefix(SRC)
     head = rel.split("/")[0]
     return head.removesuffix(".py") if head != "__init__.py" else "__init__"
 
 
 def module_name(file: str) -> str:
-    rel = file.removeprefix(SRC).removesuffix(".py").replace("/", ".")
-    name = f"pylibs_{PACKAGE}.{rel}".removesuffix(".__init__")
+    root = source_root(file)
+    rel = file.removeprefix(root).removesuffix(".py").replace("/", ".")
+    name = f"{SOURCES[root]}.{rel}".removesuffix(".__init__")
     return name
 
 
@@ -236,7 +252,8 @@ def render_components(graph: Graph) -> str:
         HEADER,
         "# Components",
         "",
-        "A map of `pylibs-calc` generated from the code knowledge graph (graphify), built at "
+        "A map of `pylibs-calc` and its plugin packages (`plugin_*`, e.g. `pylibs-calc-whatif`), "
+        "generated from the code knowledge graph (graphify), built at "
         f"commit `{graph.commit[:12]}`. It lists every module with its public classes and "
         "functions, what each part imports and which components the rest of the code relies on "
         "most. For how the parts work together, read "
@@ -464,13 +481,19 @@ def ack(graph: Graph, targets: list[str]) -> list[str]:
 
 
 def public_names() -> list[str]:
-    init = ROOT / SRC / "__init__.py"
-    for node in ast.parse(init.read_text()).body:
-        if isinstance(node, ast.Assign) and any(
-            isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
-        ):
-            return [n for n in ast.literal_eval(node.value) if not n.startswith("__")]
-    return []
+    """``package.Name`` for every name in the ``__all__`` of each package."""
+    out = []
+    for root, package in SOURCES.items():
+        init = ROOT / root / "__init__.py"
+        if not init.is_file():
+            continue
+        for node in ast.parse(init.read_text()).body:
+            if isinstance(node, ast.Assign) and any(
+                isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
+            ):
+                names = ast.literal_eval(node.value)
+                out += [f"{package}.{n}" for n in names if not n.startswith("__")]
+    return out
 
 
 def undocumented() -> list[str]:
@@ -479,7 +502,9 @@ def undocumented() -> list[str]:
         for p in DOCS.rglob("*.md")
         if GENERATED not in p.parents and p.name != "api.md"
     )
-    return [n for n in public_names() if not re.search(rf"\b{re.escape(n)}\b", text)]
+    return [
+        n for n in public_names() if not re.search(rf"\b{re.escape(n.rsplit('.', 1)[1])}\b", text)
+    ]
 
 
 def render_stale(graph: Graph, stale: list[Stale], missing: list[str]) -> str:
@@ -516,13 +541,15 @@ def render_stale(graph: Graph, stale: list[Stale], missing: list[str]) -> str:
     out += ["## Public names no page mentions", ""]
     if missing:
         out.append(
-            "These are exported from `pylibs_calc` but only appear in the "
+            "These are exported from `pylibs_calc` or a plugin package but only appear in the "
             "[Python API](../api.md) reference:"
         )
         out.append("")
         out += [f"- `{name}`" for name in missing]
     else:
-        out.append("Every name in `pylibs_calc.__all__` is mentioned on at least one page.")
+        out.append(
+            "Every exported name (`__all__` of each package) is mentioned on at least one page."
+        )
     return "\n".join(out).rstrip() + "\n"
 
 

@@ -49,11 +49,8 @@ The full list is in [Error codes](../reference/error-codes.md).
 | `max_measures` | 200 |
 | `max_group_by` | 32 columns |
 | `max_expr_depth` / `max_expr_nodes` | 64 / 5,000 |
-| `max_what_if_steps` | 500 |
-| `max_scenario_steps` | 10,000 |
-| `max_edits` | 200,000 |
 
-Pass your own with `CalcEngine(catalog, store, EngineConfig(limits=Limits(...)))`.
+Pass your own with `CalcEngine(catalog, EngineConfig(limits=Limits(...)))`. Plugins have their own limits; the what-if plugin's are in `WhatIfLimits` (`max_steps` 500 per request, `max_scenario_steps` 10,000, `max_edits` 200,000), passed as `WhatIfPlugin(limits=WhatIfLimits(...))`.
 
 ## Time and load
 

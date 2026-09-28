@@ -1,11 +1,14 @@
-"""The calculation engine: resolve the dataset and scenario, plan, execute, cache, describe.
+"""The calculation engine: resolve the dataset and plugin transforms, plan, execute, cache.
 
 Typical embedding::
 
     catalog = Catalog()
     catalog.register_frame("positions", df, key_columns=["position_id"])
-    engine = CalcEngine(catalog, InMemoryScenarioStore())
+    engine = CalcEngine(catalog, plugins=[...])
     result = engine.run({"dataset": "positions", "query": {"group_by": ["sector"], ...}})
+
+:class:`CalcEngine` is the public face; :class:`Kernel` holds the machinery (executor, caches,
+view resolution, query execution) and is what plugin operations build on.
 
 Every method is synchronous and CPU-bound; call it from a worker thread (FastAPI does this for
 plain ``def`` endpoints).
@@ -16,10 +19,11 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import time
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from importlib.metadata import version as package_version
-from typing import Any, TypeVar
+from typing import Any, TypeVar, overload
 
 import polars as pl
 from pydantic import BaseModel, ValidationError
@@ -28,17 +32,7 @@ from pylibs_calc.cache import ResultCache, frame_size
 from pylibs_calc.catalog import ROW_INDEX, Dataset, DatasetCatalog
 from pylibs_calc.compile.compare import compare_frame, plan_compare
 from pylibs_calc.compile.exprs import compile_expr
-from pylibs_calc.compile.logical import (
-    LEVEL,
-    LabeledStep,
-    LogicalMutations,
-    LogicalQuery,
-    SortSpec,
-    effective_steps,
-    plan_mutations,
-    plan_query,
-)
-from pylibs_calc.compile.mutations import apply_mutations, edit_keys_frame
+from pylibs_calc.compile.logical import LEVEL, LogicalQuery, SortSpec, plan_query
 from pylibs_calc.compile.query import (
     TOTAL,
     Finished,
@@ -53,19 +47,20 @@ from pylibs_calc.compile.query import (
 )
 from pylibs_calc.compile.validate import check_predicate
 from pylibs_calc.config import CalcContext, Limits
-from pylibs_calc.dtypes import LType, NumericConfig, Scalar, json_value
-from pylibs_calc.errors import (
-    CalcError,
-    LimitExceeded,
-    SpecError,
-    VersionConflict,
-    join_path,
-)
+from pylibs_calc.dtypes import LType, NumericConfig
+from pylibs_calc.errors import CalcError, LimitExceeded, SpecError, VersionConflict, join_path
 from pylibs_calc.exec import EngineName, Executor
+from pylibs_calc.plugins import (
+    BindContext,
+    Bound,
+    OperationDef,
+    PlanContext,
+    Plugin,
+    Registry,
+    TransformPlan,
+    build_registry,
+)
 from pylibs_calc.result import CalcResult, ColumnInfo, ResultMeta
-from pylibs_calc.scenario.manager import ScenarioManager
-from pylibs_calc.scenario.model import LogEntry, Scenario
-from pylibs_calc.scenario.store import ScenarioStore
 from pylibs_calc.schema import DatasetSchema
 from pylibs_calc.spec.canonical import fingerprint, upgrade
 from pylibs_calc.spec.query import (
@@ -75,12 +70,11 @@ from pylibs_calc.spec.query import (
     Options,
     Page,
     Query,
-    ScenarioRef,
 )
-from pylibs_calc.spec.scenario import ScenarioStep
 
 M = TypeVar("M", bound=BaseModel)
-Authorizer = Callable[[CalcContext, str, "Scenario | None"], None]
+P = TypeVar("P", bound=Plugin)
+Authorizer = Callable[[CalcContext, str, Any], None]
 ResultHook = Callable[[ResultMeta, CalcContext], None]
 
 _FORMULA_CODES = {"formula_syntax", "formula_too_long", "formula_too_complex"}
@@ -90,10 +84,11 @@ _FORMULA_CODES = {"formula_syntax", "formula_too_long", "formula_too_complex"}
 class EngineConfig:
     """Engine-wide settings.
 
-    ``authorize(ctx, action, scenario)`` is called for scenario actions (``scenario.read``,
-    ``scenario.write``, ``scenario.create``, ``scenario.delete``) and should raise
-    :class:`~pylibs_calc.errors.Forbidden` to refuse. ``on_result(meta, ctx)`` sees every result,
-    e.g. for an audit log.
+    ``authorize(ctx, action, resource)`` is called by plugins before protected actions (the
+    what-if plugin uses ``scenario.read``, ``scenario.write``, ``scenario.create`` and
+    ``scenario.delete`` with the scenario as the resource) and should raise
+    :class:`~pylibs_calc.errors.Forbidden` to refuse. ``on_result(meta, ctx)`` sees every
+    result, e.g. for an audit log.
     """
 
     numeric: NumericConfig = NumericConfig()
@@ -106,26 +101,40 @@ class EngineConfig:
     on_result: ResultHook | None = None
 
 
+@dataclass(frozen=True)
+class AppliedTransform:
+    name: str
+    identity: Any
+    plan: TransformPlan
+
+
 @dataclass
-class Side:
-    """A dataset version with a scenario applied, as one caller sees it."""
+class View:
+    """A dataset version as one caller sees it, after the requested plugin transforms."""
 
     dataset: Dataset
     schema: DatasetSchema
-    scenario: Scenario | None
-    scenario_version: int | None
-    scenario_head: str | None
-    mutations: LogicalMutations
+    base: pl.LazyFrame  # the dataset after the caller's row filter and column restrictions
+    frame: pl.LazyFrame  # ... and after the transforms
+    env: dict[str, LType]
+    transforms: tuple[AppliedTransform, ...]
     steps_fingerprint: str
-    base: pl.LazyFrame
-    frame: pl.LazyFrame
-    unmatched: list[dict[str, Scalar]]
 
     def identity(self) -> dict[str, Any]:
         return {
             "dataset": [self.dataset.id, self.dataset.version],
             "steps": self.steps_fingerprint,
         }
+
+    def transform(self, name: str) -> TransformPlan | None:
+        return next((t.plan for t in self.transforms if t.name == name), None)
+
+    @property
+    def canonical(self) -> list[Any]:
+        return [entry for t in self.transforms for entry in t.plan.canonical]
+
+    def meta(self) -> dict[str, Any]:
+        return {t.name: t.plan.meta() for t in self.transforms}
 
 
 def validation_error(exc: ValidationError, prefix: str = "") -> SpecError:
@@ -144,338 +153,131 @@ def validation_error(exc: ValidationError, prefix: str = "") -> SpecError:
     return SpecError(message, code=code, path=path, detail=detail)
 
 
-class CalcEngine:
+class Kernel:
+    """The engine's machinery, shared by the built-in calls and by plugin operations.
+
+    A typical operation::
+
+        def run(kernel, req, ctx):
+            with kernel.slot():
+                deadline = kernel.deadline(req.options)
+                view = kernel.resolve_view(req.dataset, req.extensions, ctx, deadline=deadline)
+                return kernel.query(view, req.query, req.options, ctx, deadline=deadline)
+    """
+
     def __init__(
         self,
         catalog: DatasetCatalog,
-        scenario_store: ScenarioStore | None = None,
-        config: EngineConfig | None = None,
+        config: EngineConfig,
+        plugins: Sequence[Plugin],
     ) -> None:
         self.catalog = catalog
-        self.config = config or EngineConfig()
+        self.config = config
+        self.plugins = tuple(plugins)
+        self.registry: Registry = build_registry(self.plugins)
         self._executor = Executor(
-            max_concurrent=self.config.max_concurrent, queue_timeout_s=self.config.queue_timeout_s
+            max_concurrent=config.max_concurrent, queue_timeout_s=config.queue_timeout_s
         )
-        self.cache: ResultCache[Any] = ResultCache(self.config.cache_bytes)
-        self._plans: ResultCache[Any] = ResultCache(64 * 1024 * 1024)
-        self._scenarios = ScenarioManager(self, scenario_store) if scenario_store else None
+        self.cache: ResultCache[Any] = ResultCache(config.cache_bytes)
+        self.plans: ResultCache[Any] = ResultCache(64 * 1024 * 1024)
         self.versions = {
             "pylibs-calc": package_version("pylibs-calc"),
             "polars": pl.__version__,
+            **{f"plugin:{p.name}": p.version for p in self.plugins},
         }
-        self._salt = fingerprint(
-            {"versions": self.versions, "numeric": dataclasses.asdict(self.config.numeric)}
+        self.salt = fingerprint(
+            {"versions": self.versions, "numeric": dataclasses.asdict(config.numeric)}
         )
 
-    # --- Public API -------------------------------------------------------------------------
+    # --- Plumbing ---------------------------------------------------------------------------
 
-    @property
-    def scenarios(self) -> ScenarioManager:
-        if self._scenarios is None:
-            raise CalcError(
-                "this engine has no scenario store", code="no_scenario_store", detail={}
-            )
-        return self._scenarios
-
-    def authorize(self, ctx: CalcContext, action: str, scenario: Scenario | None) -> None:
-        if self.config.authorize is not None:
-            self.config.authorize(ctx, action, scenario)
-
-    def schema(
-        self, dataset_id: str, version: str | None = None, *, ctx: CalcContext | None = None
-    ) -> DatasetSchema:
-        """The dataset's columns as ``ctx`` may see them."""
-        ctx = ctx or CalcContext()
-        return self.catalog.get(dataset_id, version).schema.restrict(ctx.allowed_columns)
-
-    def run(
-        self, request: CalcRequest | Mapping[str, Any], ctx: CalcContext | None = None
-    ) -> CalcResult:
-        """Evaluate a request and return the (paged) result with its metadata."""
-        started = time.perf_counter()
-        req = self.parse(CalcRequest, request)
-        ctx = ctx or CalcContext()
-        self._check_what_if(req.what_if, "/what_if")
-        timings: dict[str, float] = {}
-        with self._executor.slot():
-            timings["queue"] = _ms(started)
-            deadline = self._deadline(req.options)
-            mark = time.perf_counter()
-            side = self._resolve_side(
-                req.dataset, req.scenario, req.what_if, ctx, req.options.strict_edits, deadline
-            )
-            logical = self._plan_query(req.query, side)
-            timings["plan"] = _ms(mark)
-            engine = self._engine_name(req.options, side.dataset)
-            identity = self._identity(side.identity(), req.query, req.options, ctx)
-            mark = time.perf_counter()
-            if logical.aggregated:
-                key = self._cache_key(identity, drop_page=True)
-                finished, cached = self._aggregate(
-                    side, logical, key, engine, deadline, req.options
-                )
-                frame = _page(finished.frame, req.query.page)
-                total, columns, fields = (
-                    finished.total_rows,
-                    finished.columns,
-                    finished.pivot_fields,
-                )
-            else:
-                key = self._cache_key(identity, drop_page=False)
-                frame, total, cached = self._leaf(side, logical, key, engine, deadline)
-                columns, fields = logical.output, None
-            timings["execute"] = _ms(mark)
-            stage_rows = None
-            if req.options.audit:
-                stage_rows = self._stage_rows(side, logical, total, engine, deadline)
-        timings["total"] = _ms(started)
-        meta = self._meta(
-            identity, side, frame, total, req.query.page, columns, fields, engine, cached, timings
-        )
-        if stage_rows is not None:
-            meta = meta.model_copy(update={"stage_rows": stage_rows})
-        return self._finish(frame, meta, ctx)
-
-    def compare(
-        self, request: CompareRequest | Mapping[str, Any], ctx: CalcContext | None = None
-    ) -> CalcResult:
-        """Run a query on two sides and join them with deltas (see :class:`CompareRequest`)."""
-        started = time.perf_counter()
-        req = self.parse(CompareRequest, request)
-        ctx = ctx or CalcContext()
-        self._check_what_if(req.what_if, "/what_if")
-        self._check_what_if(req.base_what_if, "/base_what_if")
-        timings: dict[str, float] = {}
-        core = req.query.model_copy(update={"sort": (), "page": None})
-        with self._executor.slot():
-            timings["queue"] = _ms(started)
-            deadline = self._deadline(req.options)
-            strict = req.options.strict_edits
-            target = self._resolve_side(
-                req.dataset, req.scenario, req.what_if, ctx, strict, deadline
-            )
-            base = self._resolve_side(
-                req.dataset, req.base, req.base_what_if, ctx, strict, deadline
-            )
-            lt, lb = self._plan_query(core, target), self._plan_query(core, base)
-            engine = self._engine_name(req.options, target.dataset)
-            identity = self._identity(
-                {"compare": [target.identity(), base.identity()]}, req.query, req.options, ctx
-            )
-            mark = time.perf_counter()
-            if lt.aggregated:
-                keys = tuple(lt.group_by) + ((LEVEL,) if lt.rollup else ())
-                plan = plan_compare(keys, lt.output, lb.output, lt.value_names, self.config.numeric)
-                key = self._cache_key(identity, drop_page=True)
-                hit = self.cache.get(key)
-                cached = hit is not None
-                if hit is None:
-                    kt = self._cache_key(
-                        self._identity(target.identity(), core, req.options, ctx), drop_page=True
-                    )
-                    kb = self._cache_key(
-                        self._identity(base.identity(), core, req.options, ctx), drop_page=True
-                    )
-                    ft, _ = self._aggregate(target, lt, kt, engine, deadline, req.options)
-                    fb, _ = self._aggregate(base, lb, kb, engine, deadline, req.options)
-                    joined = compare_frame(ft.frame.lazy(), fb.frame.lazy(), plan).collect()
-                    view = _with_sort(lt, req.query.sort, set(plan.output))
-                    hit = sort_frame(joined, view)
-                    self.cache.put(key, hit, frame_size(hit))
-                total = hit.height
-                frame = _page(hit, req.query.page)
-                columns = plan.output
-            else:
-                keys = target.dataset.key_columns
-                if not keys:
-                    raise SpecError(
-                        "comparing rows needs a dataset with key columns", code="no_key_columns"
-                    )
-                values = tuple(c for c in lt.select if c not in keys)
-                plan = plan_compare(
-                    keys,
-                    lt.output | {k: lt.row_env[k] for k in keys},
-                    lb.output | {k: lb.row_env[k] for k in keys},
-                    values,
-                    self.config.numeric,
-                )
-                view = _with_sort(lt, req.query.sort, set(plan.output))
-                lf = compare_frame(
-                    rows_frame(target.frame, lt), rows_frame(base.frame, lb), plan
-                ).with_columns(pl.len().alias(TOTAL))
-                sort_keys = [*view.sort, *(SortSpec(k, False, True) for k in keys)]
-                lf = lf.sort(
-                    [s.by for s in sort_keys],
-                    descending=[s.desc for s in sort_keys],
-                    nulls_last=[s.nulls_last for s in sort_keys],
-                )
-                page = req.query.page
-                if page is not None:
-                    lf = lf.slice(page.offset, page.limit)
-                else:
-                    lf = lf.head(self.config.limits.max_unpaged_rows + 1)
-                key = self._cache_key(identity, drop_page=False)
-                hit_leaf = self.cache.get(key)
-                cached = hit_leaf is not None
-                if hit_leaf is None:
-                    df = self._executor.collect(lf, engine=engine, deadline=deadline)
-                    if page is None and df.height > self.config.limits.max_unpaged_rows:
-                        raise _too_many_rows(self.config.limits)
-                    total = int(df[TOTAL][0]) if df.height else 0
-                    hit_leaf = (df.drop(TOTAL), total)
-                    self.cache.put(key, hit_leaf, frame_size(hit_leaf[0]))
-                frame, total = hit_leaf
-                columns = plan.output
-            timings["execute"] = _ms(mark)
-        timings["total"] = _ms(started)
-        meta = self._meta(
-            identity, target, frame, total, req.query.page, columns, None, engine, cached, timings
-        )
-        return self._finish(frame, meta, ctx)
-
-    def explain(
-        self, request: CalcRequest | Mapping[str, Any], ctx: CalcContext | None = None
-    ) -> dict[str, Any]:
-        """Describe what a request computes: effective steps, lineage, types and the Polars plan."""
-        req = self.parse(CalcRequest, request)
-        ctx = ctx or CalcContext()
-        with self._executor.slot():
-            deadline = self._deadline(req.options)
-            side = self._resolve_side(
-                req.dataset, req.scenario, req.what_if, ctx, req.options.strict_edits, deadline
-            )
-            logical = self._plan_query(req.query, side)
-        if logical.aggregated:
-            lf = agg_frame(side.frame, logical, deterministic=req.options.deterministic)
-        else:
-            lf = leaf_frame(side.frame, logical, self.config.limits)
-        from pylibs_calc.spec.formula import to_formula
-
-        formulas = {f.name: to_formula(f.typed.node) for f in side.mutations.formulas}
-        derives = {d.name: to_formula(d.expr.node) for d in logical.derives}
-        identity = self._identity(side.identity(), req.query, req.options, ctx)
-        return {
-            "fingerprint": fingerprint(identity),
-            "dataset": {"id": side.dataset.id, "version": side.dataset.version},
-            "scenario": None
-            if side.scenario is None
-            else {
-                "id": side.scenario.id,
-                "version": side.scenario_version,
-                "head": side.scenario_head,
-            },
-            "steps": side.mutations.canonical,
-            "lineage": {
-                "changed_by": side.mutations.lineage,
-                "formulas": formulas,
-                "derived": derives,
-            },
-            "columns": {name: str(t) for name, t in logical.output.items()},
-            "plan": lf.explain(),
-        }
-
-    def distinct_values(
-        self,
-        dataset: str | DatasetRef,
-        column: str,
-        *,
-        scenario: str | ScenarioRef | None = None,
-        what_if: Sequence[ScenarioStep | Mapping[str, Any]] = (),
-        filter: str | None = None,
-        limit: int = 1000,
-        ctx: CalcContext | None = None,
-    ) -> list[Any]:
-        """Sorted distinct values of a column (nulls last), e.g. for a set filter."""
-        request: dict[str, Any] = {
-            "dataset": dataset if isinstance(dataset, str) else dataset.model_dump(),
-            "what_if": list(what_if),
-            "query": {"group_by": [column], "page": {"limit": limit}},
-        }
-        if scenario is not None:
-            request["scenario"] = scenario if isinstance(scenario, str) else scenario.model_dump()
-        if filter is not None:
-            request["query"]["filter"] = filter
-        result = self.run(request, ctx)
-        return result.frame[column].to_list()
-
-    def validate_steps(
-        self,
-        dataset: DatasetRef,
-        steps: Sequence[tuple[str, ScenarioStep]],
-        ctx: CalcContext,
-    ) -> LogicalMutations:
-        """Check a full scenario log against its dataset (used before every append)."""
-        ds = self.catalog.get(dataset.id, dataset.version)
-        labeled = [LabeledStep(label, step) for label, step in steps]
-        with self._executor.slot():
-            side = self._plan_side(ds, labeled, ctx, True, None, None, None, None)
-        return side.mutations
-
-    def parse(self, model: type[M], request: M | Mapping[str, Any]) -> M:
+    def parse(self, model: type[M], request: M | Mapping[str, Any], path: str = "") -> M:
+        """Validate a request; versioned requests (``spec_version``) are upgraded first."""
         if isinstance(request, model):
             return request
         if not isinstance(request, Mapping):
             raise SpecError(f"expected a {model.__name__} or a JSON object", code="invalid_request")
+        raw = dict(request)
+        if "spec_version" in model.model_fields:
+            raw = upgrade(raw)
         try:
-            return model.model_validate(upgrade(dict(request)))
+            return model.model_validate(raw)
         except ValidationError as exc:
-            raise validation_error(exc) from None
+            raise validation_error(exc, path) from None
+
+    def authorize(self, ctx: CalcContext, action: str, resource: Any) -> None:
+        if self.config.authorize is not None:
+            self.config.authorize(ctx, action, resource)
+
+    @contextmanager
+    def slot(self) -> Iterator[None]:
+        """Hold one of the engine's concurrent execution slots (queues, then 503)."""
+        with self._executor.slot():
+            yield
+
+    def deadline(self, options: Options) -> float | None:
+        timeout = options.timeout_s or self.config.default_timeout_s
+        return None if timeout is None else time.monotonic() + timeout
+
+    def engine_name(self, options: Options, dataset: Dataset) -> EngineName:
+        if options.engine != "auto":
+            return options.engine
+        return "streaming" if dataset.kind == "scan" else "in-memory"
+
+    def collect(
+        self, lf: pl.LazyFrame, *, engine: EngineName = "in-memory", deadline: float | None
+    ) -> pl.DataFrame:
+        return self._executor.collect(lf, engine=engine, deadline=deadline)
 
     # --- Resolution -------------------------------------------------------------------------
 
-    def _resolve_side(
+    def resolve_view(
         self,
-        dataset_ref: DatasetRef,
-        scenario_ref: ScenarioRef | None,
-        what_if: Sequence[ScenarioStep],
+        dataset: DatasetRef,
+        extensions: Mapping[str, Any],
         ctx: CalcContext,
-        strict: bool,
+        *,
         deadline: float | None,
-    ) -> Side:
-        entries: list[LogEntry] = []
-        scenario = None
-        version = None
-        head = None
-        if scenario_ref is not None:
-            scenario = self.scenarios.get(scenario_ref.id, ctx=ctx)
-            if scenario.dataset.id != dataset_ref.id:
+        path: str = "/extensions",
+    ) -> View:
+        """Load the dataset version and apply the transforms named in ``extensions``."""
+        for name in extensions:
+            if name not in self.registry.transforms:
                 raise SpecError(
-                    f"scenario {scenario.id} belongs to dataset {scenario.dataset.id}",
-                    code="dataset_mismatch",
-                    path="/scenario",
+                    f"unknown extension: {name}",
+                    code="unknown_extension",
+                    path=join_path(path, name),
+                    detail={"available": sorted(self.registry.transforms)},
                 )
-            if dataset_ref.version is not None and dataset_ref.version != scenario.dataset.version:
-                raise VersionConflict(
-                    f"scenario {scenario.id} is pinned to version {scenario.dataset.version}",
-                    path="/dataset/version",
-                )
-            version = scenario.version if scenario_ref.version is None else scenario_ref.version
-            if version > scenario.version:
-                raise SpecError(
-                    f"scenario {scenario.id} has no version {version}",
-                    code="invalid_version",
-                    path="/scenario/version",
-                )
-            entries = self._entries(scenario, version)
-            head = entries[-1].hash if entries else scenario.genesis
-            dataset = self.catalog.get(scenario.dataset.id, scenario.dataset.version)
-        else:
-            dataset = self.catalog.get(dataset_ref.id, dataset_ref.version)
-        labeled = [LabeledStep(join_path("/scenario/steps", e.seq), e.step) for e in entries]
-        labeled += [LabeledStep(join_path("/what_if", i), s) for i, s in enumerate(what_if)]
-        return self._plan_side(dataset, labeled, ctx, strict, deadline, scenario, version, head)
+        bound: list[tuple[str, Bound]] = []
+        for name, tdef in self.registry.transforms.items():
+            if name not in extensions:
+                continue
+            block_path = join_path(path, name)
+            block = extensions[name]
+            if not isinstance(block, tdef.model):
+                block = self.parse(tdef.model, block if block is not None else {}, block_path)
+            bound.append((name, tdef.bind(block, BindContext(self, dataset, ctx, block_path))))
+        pins = {b.pinned_version for _, b in bound if b.pinned_version is not None}
+        if len(pins) > 1:
+            raise VersionConflict(
+                f"the extensions pin different dataset versions: {sorted(pins)}", path=path
+            )
+        version = next(iter(pins)) if pins else dataset.version
+        return self.plan_view(
+            self.catalog.get(dataset.id, version), bound, ctx, deadline=deadline, path=path
+        )
 
-    def _plan_side(
+    def plan_view(
         self,
         dataset: Dataset,
-        labeled: list[LabeledStep],
+        bound: Sequence[tuple[str, Bound]],
         ctx: CalcContext,
-        strict: bool,
+        *,
         deadline: float | None,
-        scenario: Scenario | None,
-        version: int | None,
-        head: str | None,
-    ) -> Side:
+        path: str = "/extensions",
+    ) -> View:
+        """Apply already-bound transforms to a dataset version (plans are cached)."""
         cfg = self.config.numeric
         schema = dataset.schema.restrict(ctx.allowed_columns)
         base = dataset.lazy()
@@ -484,94 +286,114 @@ class CalcEngine:
             base = base.select(visible + ([ROW_INDEX] if dataset.has_row_index else []))
         row_filter = ctx.row_filter_node()
         if row_filter is not None:
-            typed = check_predicate(row_filter, schema.ltypes(), cfg, "/context/row_filter")
-            base = base.filter(compile_expr(typed))
-        plan_key = "plan:" + fingerprint(
-            {
-                "dataset": [dataset.id, dataset.version],
-                "scenario": None if scenario is None else [scenario.id, version, head],
-                # A saved scenario is identified by (id, version, head); only extra steps count.
-                "steps": [s.step for s in labeled[version or 0 :]]
-                if scenario
-                else [s.step for s in labeled],
-                "ctx": ctx.digest(),
-                "salt": self._salt,
-            }
-        )
-        cached = self._plans.get(plan_key)
-        if cached is None:
-            mutations = plan_mutations(effective_steps(labeled), schema, cfg, self.config.limits)
-            steps_fp = fingerprint(mutations.canonical)
-            unmatched = self._unmatched(base, mutations, deadline)
-            cached = (mutations, steps_fp, unmatched)
-            self._plans.put(plan_key, cached, 1024 + 64 * len(mutations.edit_keys))
-        mutations, steps_fp, unmatched = cached
-        if strict and unmatched:
-            raise SpecError(
-                f"{len(unmatched)} edit(s) match no row",
-                code="unmatched_edits",
-                detail={"keys": unmatched[:20]},
+            typed = check_predicate(
+                row_filter,
+                schema.ltypes(),
+                cfg,
+                "/context/row_filter",
+                functions=self.registry.functions,
             )
-        return Side(
+            base = base.filter(compile_expr(typed))
+        env = schema.ltypes()
+        frame = base
+        applied: list[AppliedTransform] = []
+        for name, b in bound:
+            identity = b.identity
+            key = "plan:" + fingerprint(
+                {
+                    "dataset": [dataset.id, dataset.version],
+                    "transform": name,
+                    "identity": identity,
+                    "upstream": [[t.name, t.identity] for t in applied],
+                    "ctx": ctx.digest(),
+                    "salt": self.salt,
+                }
+            )
+            plan = self.plans.get(key)
+            if plan is None:
+                pc = PlanContext(self, dataset, schema, ctx, join_path(path, name), deadline)
+                plan = b.plan(env, frame, pc)
+                self.plans.put(key, plan, plan.size())
+            frame = plan.apply(frame)
+            env = dict(plan.env)
+            applied.append(AppliedTransform(name, identity, plan))
+        canonical = [entry for t in applied for entry in t.plan.canonical]
+        return View(
             dataset=dataset,
             schema=schema,
-            scenario=scenario,
-            scenario_version=version,
-            scenario_head=head,
-            mutations=mutations,
-            steps_fingerprint=steps_fp,
             base=base,
-            frame=apply_mutations(base, mutations),
-            unmatched=unmatched,
+            frame=frame,
+            env=env,
+            transforms=tuple(applied),
+            steps_fingerprint=fingerprint(canonical),
         )
 
-    def _unmatched(
-        self, base: pl.LazyFrame, mutations: LogicalMutations, deadline: float | None
-    ) -> list[dict[str, Scalar]]:
-        if not mutations.edit_keys:
-            return []
-        keys = list(mutations.key_columns)
-        check = edit_keys_frame(mutations).lazy().join(base.select(keys), on=keys, how="anti")
-        missing = self._executor.collect(check, engine="in-memory", deadline=deadline)
-        types = [mutations.base_env[k] for k in keys]
-        return [
-            {k: json_value(v, t) for k, v, t in zip(keys, row, types, strict=True)}
-            for row in missing.iter_rows()
-        ]
-
-    def _entries(self, scenario: Scenario, version: int) -> list[LogEntry]:
-        key = f"entries:{scenario.id}:{version}"
-        cached = self._plans.get(key)
-        if cached is None:
-            cached = self.scenarios.store.entries(scenario.id, upto=version)
-            self._plans.put(key, cached, 512 * (len(cached) + 1))
-        return list(cached)
-
-    def _plan_query(self, query: Query, side: Side) -> LogicalQuery:
+    def plan_query(self, query: Query, view: View, path: str = "/query") -> LogicalQuery:
         return plan_query(
             query,
-            side.mutations.env,
+            view.env,
             self.config.numeric,
             self.config.limits,
-            key_columns=side.dataset.key_columns,
+            key_columns=view.dataset.key_columns,
+            path=path,
+            registry=self.registry,
         )
 
     # --- Execution --------------------------------------------------------------------------
 
-    def _aggregate(
+    def query(
         self,
-        side: Side,
+        view: View,
+        query: Query,
+        options: Options,
+        ctx: CalcContext,
+        *,
+        deadline: float | None,
+        timings: dict[str, float] | None = None,
+    ) -> CalcResult:
+        """Plan and run ``query`` on a resolved view (paged, cached, with metadata)."""
+        timings = {} if timings is None else timings
+        mark = time.perf_counter()
+        logical = self.plan_query(query, view)
+        timings["plan"] = timings.get("plan", 0.0) + _ms(mark)
+        engine = self.engine_name(options, view.dataset)
+        identity = self.identity(view.identity(), query, options, ctx)
+        mark = time.perf_counter()
+        if logical.aggregated:
+            key = self.cache_key(identity, drop_page=True)
+            finished, cached = self.aggregate(view, logical, key, engine, deadline, options)
+            frame = _page(finished.frame, query.page)
+            total, columns, fields = finished.total_rows, finished.columns, finished.pivot_fields
+        else:
+            key = self.cache_key(identity, drop_page=False)
+            frame, total, cached = self.leaf(view, logical, key, engine, deadline)
+            columns, fields = logical.output, None
+        timings["execute"] = _ms(mark)
+        stage_rows = None
+        if options.audit:
+            stage_rows = self.stage_rows(view, logical, total, engine, deadline)
+        meta = self.meta(
+            identity, view, frame, total, query.page, columns, fields, engine, cached, timings
+        )
+        if stage_rows is not None:
+            meta = meta.model_copy(update={"stage_rows": stage_rows})
+        return CalcResult(frame, meta)
+
+    def aggregate(
+        self,
+        view: View,
         logical: LogicalQuery,
         key: str,
         engine: EngineName,
         deadline: float | None,
         options: Options,
     ) -> tuple[Finished, bool]:
+        """Aggregate a view, through the result cache. Returns (result, was it cached)."""
         hit = self.cache.get(key)
         if hit is not None:
             return hit, True
         finished = self.evaluate_aggregate(
-            side.frame,
+            view.frame,
             logical,
             engine=engine,
             deadline=deadline,
@@ -606,20 +428,21 @@ class CalcEngine:
                 )
         return finish_aggregate(agg, logical, self.config.limits, domain=domain, totals=totals)
 
-    def _leaf(
+    def leaf(
         self,
-        side: Side,
+        view: View,
         logical: LogicalQuery,
         key: str,
         engine: EngineName,
         deadline: float | None,
     ) -> tuple[pl.DataFrame, int, bool]:
+        """Rows of a view (one page), through the cache. Returns (rows, total, was it cached)."""
         hit = self.cache.get(key)
         if hit is not None:
             return hit[0], hit[1], True
         limits = self.config.limits
         df = self._executor.collect(
-            leaf_frame(side.frame, logical, limits), engine=engine, deadline=deadline
+            leaf_frame(view.frame, logical, limits), engine=engine, deadline=deadline
         )
         page = logical.page
         if page is None and df.height > limits.max_unpaged_rows:
@@ -630,33 +453,34 @@ class CalcEngine:
             total = 0
         else:
             counted = self._executor.collect(
-                count_frame(side.frame, logical), engine=engine, deadline=deadline
+                count_frame(view.frame, logical), engine=engine, deadline=deadline
             )
             total = int(counted[TOTAL][0])
         frame = df.drop(TOTAL)
         self.cache.put(key, (frame, total), frame_size(frame))
         return frame, total, False
 
-    def _stage_rows(
+    def stage_rows(
         self,
-        side: Side,
+        view: View,
         logical: LogicalQuery,
         total: int,
         engine: EngineName,
         deadline: float | None,
     ) -> dict[str, int]:
         collect = self._executor.collect
-        base = collect(side.base.select(pl.len()), engine=engine, deadline=deadline).item()
-        filtered = collect(count_frame(side.frame, logical), engine=engine, deadline=deadline)
+        base = collect(view.base.select(pl.len()), engine=engine, deadline=deadline).item()
+        filtered = collect(count_frame(view.frame, logical), engine=engine, deadline=deadline)
         return {"dataset": int(base), "filtered": int(filtered[TOTAL][0]), "result": total}
 
-    # --- Helpers ----------------------------------------------------------------------------
+    # --- Identity and metadata --------------------------------------------------------------
 
-    def _identity(
+    def identity(
         self, side: Mapping[str, Any], query: Query, options: Options, ctx: CalcContext
     ) -> dict[str, Any]:
+        """What a result depends on; its fingerprint is the result's fingerprint."""
         return {
-            "spec_version": 1,
+            "spec_version": 1,  # the identity format, not the request format
             "side": dict(side),
             "query": query,
             "deterministic": options.deterministic,
@@ -664,33 +488,18 @@ class CalcEngine:
             "context": ctx.digest(),
         }
 
-    def _cache_key(self, identity: Mapping[str, Any], *, drop_page: bool) -> str:
+    def cache_key(self, identity: Mapping[str, Any], *, drop_page: bool) -> str:
         data = dict(identity)
         if drop_page:
             query = data["query"]
             assert isinstance(query, Query)
             data["query"] = query.model_copy(update={"page": None})
-        return hashlib.sha256((fingerprint(data) + self._salt).encode()).hexdigest()
+        return hashlib.sha256((fingerprint(data) + self.salt).encode()).hexdigest()
 
-    def _deadline(self, options: Options) -> float | None:
-        timeout = options.timeout_s or self.config.default_timeout_s
-        return None if timeout is None else time.monotonic() + timeout
-
-    def _engine_name(self, options: Options, dataset: Dataset) -> EngineName:
-        if options.engine != "auto":
-            return options.engine
-        return "streaming" if dataset.kind == "scan" else "in-memory"
-
-    def _check_what_if(self, steps: Sequence[ScenarioStep], path: str) -> None:
-        if len(steps) > self.config.limits.max_what_if_steps:
-            raise LimitExceeded(
-                f"more than {self.config.limits.max_what_if_steps} what-if steps", path=path
-            )
-
-    def _meta(
+    def meta(
         self,
         identity: Mapping[str, Any],
-        side: Side,
+        view: View,
         frame: pl.DataFrame,
         total: int,
         page: Page | None,
@@ -700,14 +509,9 @@ class CalcEngine:
         cached: bool,
         timings: dict[str, float],
     ) -> ResultMeta:
-        scenario = None
-        if side.scenario is not None:
-            scenario = ScenarioRef(id=side.scenario.id, version=side.scenario_version)
         return ResultMeta(
             fingerprint=fingerprint(identity),
-            dataset=DatasetRef(id=side.dataset.id, version=side.dataset.version),
-            scenario=scenario,
-            scenario_head=side.scenario_head,
+            dataset=DatasetRef(id=view.dataset.id, version=view.dataset.version),
             total_rows=total,
             offset=page.offset if page else 0,
             rows=frame.height,
@@ -716,14 +520,261 @@ class CalcEngine:
             engine=engine,
             cached=cached,
             timings_ms=timings,
-            unmatched_edits=side.unmatched[:100],
+            extensions=view.meta(),
             versions=self.versions,
         )
 
-    def _finish(self, frame: pl.DataFrame, meta: ResultMeta, ctx: CalcContext) -> CalcResult:
+    def finish(self, result: CalcResult, ctx: CalcContext) -> CalcResult:
+        """Hand a result to ``EngineConfig.on_result``; every call should end here."""
         if self.config.on_result is not None:
-            self.config.on_result(meta, ctx)
-        return CalcResult(frame, meta)
+            self.config.on_result(result.meta, ctx)
+        return result
+
+
+class CalcEngine:
+    """Evaluate calculation requests over a :class:`~pylibs_calc.catalog.DatasetCatalog`.
+
+    ``plugins`` add functions, aggregates, transforms, operations and routes (see
+    :mod:`pylibs_calc.plugins`); ``discover_plugins()`` finds the installed ones.
+    """
+
+    def __init__(
+        self,
+        catalog: DatasetCatalog,
+        config: EngineConfig | None = None,
+        plugins: Sequence[Plugin] = (),
+    ) -> None:
+        self.kernel = Kernel(catalog, config or EngineConfig(), plugins)
+        for plugin in self.kernel.plugins:
+            plugin.attach(self)
+
+    @property
+    def catalog(self) -> DatasetCatalog:
+        return self.kernel.catalog
+
+    @property
+    def config(self) -> EngineConfig:
+        return self.kernel.config
+
+    @property
+    def cache(self) -> ResultCache[Any]:
+        return self.kernel.cache
+
+    @property
+    def registry(self) -> Registry:
+        return self.kernel.registry
+
+    @property
+    def versions(self) -> dict[str, str]:
+        return self.kernel.versions
+
+    @overload
+    def plugin(self, key: str) -> Plugin: ...
+    @overload
+    def plugin(self, key: type[P]) -> P: ...
+    def plugin(self, key: str | type[Plugin]) -> Plugin:
+        """An installed plugin, by name or by class."""
+        for p in self.kernel.plugins:
+            if (isinstance(key, str) and p.name == key) or (
+                isinstance(key, type) and isinstance(p, key)
+            ):
+                return p
+        name = key if isinstance(key, str) else key.__name__
+        raise CalcError(f"plugin {name} is not installed", code="plugin_not_installed")
+
+    # --- Public API -------------------------------------------------------------------------
+
+    def authorize(self, ctx: CalcContext, action: str, resource: Any) -> None:
+        self.kernel.authorize(ctx, action, resource)
+
+    def parse(self, model: type[M], request: M | Mapping[str, Any]) -> M:
+        return self.kernel.parse(model, request)
+
+    def schema(
+        self, dataset_id: str, version: str | None = None, *, ctx: CalcContext | None = None
+    ) -> DatasetSchema:
+        """The dataset's columns as ``ctx`` may see them."""
+        ctx = ctx or CalcContext()
+        return self.catalog.get(dataset_id, version).schema.restrict(ctx.allowed_columns)
+
+    def run(
+        self, request: CalcRequest | Mapping[str, Any], ctx: CalcContext | None = None
+    ) -> CalcResult:
+        """Evaluate a request and return the (paged) result with its metadata."""
+        k = self.kernel
+        started = time.perf_counter()
+        req = k.parse(CalcRequest, request)
+        ctx = ctx or CalcContext()
+        timings: dict[str, float] = {}
+        with k.slot():
+            timings["queue"] = _ms(started)
+            deadline = k.deadline(req.options)
+            mark = time.perf_counter()
+            view = k.resolve_view(req.dataset, req.extensions, ctx, deadline=deadline)
+            timings["plan"] = _ms(mark)
+            result = k.query(view, req.query, req.options, ctx, deadline=deadline, timings=timings)
+        timings["total"] = _ms(started)
+        return k.finish(result, ctx)
+
+    def compare(
+        self, request: CompareRequest | Mapping[str, Any], ctx: CalcContext | None = None
+    ) -> CalcResult:
+        """Run a query on two sides and join them with deltas (see :class:`CompareRequest`)."""
+        k = self.kernel
+        started = time.perf_counter()
+        req = k.parse(CompareRequest, request)
+        ctx = ctx or CalcContext()
+        timings: dict[str, float] = {}
+        core = req.query.model_copy(update={"sort": (), "page": None})
+        base_ref = DatasetRef(id=req.dataset.id, version=req.base.version or req.dataset.version)
+        with k.slot():
+            timings["queue"] = _ms(started)
+            deadline = k.deadline(req.options)
+            target = k.resolve_view(req.dataset, req.extensions, ctx, deadline=deadline)
+            base = k.resolve_view(
+                base_ref, req.base.extensions, ctx, deadline=deadline, path="/base/extensions"
+            )
+            lt, lb = k.plan_query(core, target), k.plan_query(core, base)
+            engine = k.engine_name(req.options, target.dataset)
+            identity = k.identity(
+                {"compare": [target.identity(), base.identity()]}, req.query, req.options, ctx
+            )
+            mark = time.perf_counter()
+            if lt.aggregated:
+                keys = tuple(lt.group_by) + ((LEVEL,) if lt.rollup else ())
+                plan = plan_compare(keys, lt.output, lb.output, lt.value_names, k.config.numeric)
+                key = k.cache_key(identity, drop_page=True)
+                hit = k.cache.get(key)
+                cached = hit is not None
+                if hit is None:
+                    kt = k.cache_key(
+                        k.identity(target.identity(), core, req.options, ctx), drop_page=True
+                    )
+                    kb = k.cache_key(
+                        k.identity(base.identity(), core, req.options, ctx), drop_page=True
+                    )
+                    ft, _ = k.aggregate(target, lt, kt, engine, deadline, req.options)
+                    fb, _ = k.aggregate(base, lb, kb, engine, deadline, req.options)
+                    joined = compare_frame(ft.frame.lazy(), fb.frame.lazy(), plan).collect()
+                    view = _with_sort(lt, req.query.sort, set(plan.output))
+                    hit = sort_frame(joined, view)
+                    k.cache.put(key, hit, frame_size(hit))
+                total = hit.height
+                frame = _page(hit, req.query.page)
+                columns = plan.output
+            else:
+                keys = target.dataset.key_columns
+                if not keys:
+                    raise SpecError(
+                        "comparing rows needs a dataset with key columns", code="no_key_columns"
+                    )
+                values = tuple(c for c in lt.select if c not in keys)
+                plan = plan_compare(
+                    keys,
+                    lt.output | {c: lt.row_env[c] for c in keys},
+                    lb.output | {c: lb.row_env[c] for c in keys},
+                    values,
+                    k.config.numeric,
+                )
+                view = _with_sort(lt, req.query.sort, set(plan.output))
+                lf = compare_frame(
+                    rows_frame(target.frame, lt), rows_frame(base.frame, lb), plan
+                ).with_columns(pl.len().alias(TOTAL))
+                sort_keys = [*view.sort, *(SortSpec(c, False, True) for c in keys)]
+                lf = lf.sort(
+                    [s.by for s in sort_keys],
+                    descending=[s.desc for s in sort_keys],
+                    nulls_last=[s.nulls_last for s in sort_keys],
+                )
+                page = req.query.page
+                if page is not None:
+                    lf = lf.slice(page.offset, page.limit)
+                else:
+                    lf = lf.head(k.config.limits.max_unpaged_rows + 1)
+                key = k.cache_key(identity, drop_page=False)
+                hit_leaf = k.cache.get(key)
+                cached = hit_leaf is not None
+                if hit_leaf is None:
+                    df = k.collect(lf, engine=engine, deadline=deadline)
+                    if page is None and df.height > k.config.limits.max_unpaged_rows:
+                        raise _too_many_rows(k.config.limits)
+                    total = int(df[TOTAL][0]) if df.height else 0
+                    hit_leaf = (df.drop(TOTAL), total)
+                    k.cache.put(key, hit_leaf, frame_size(hit_leaf[0]))
+                frame, total = hit_leaf
+                columns = plan.output
+            timings["execute"] = _ms(mark)
+        timings["total"] = _ms(started)
+        meta = k.meta(
+            identity, target, frame, total, req.query.page, columns, None, engine, cached, timings
+        )
+        return k.finish(CalcResult(frame, meta), ctx)
+
+    def explain(
+        self, request: CalcRequest | Mapping[str, Any], ctx: CalcContext | None = None
+    ) -> dict[str, Any]:
+        """Describe what a request computes: transform steps, lineage, types and the Polars
+        plan."""
+        k = self.kernel
+        req = k.parse(CalcRequest, request)
+        ctx = ctx or CalcContext()
+        with k.slot():
+            deadline = k.deadline(req.options)
+            view = k.resolve_view(req.dataset, req.extensions, ctx, deadline=deadline)
+            logical = k.plan_query(req.query, view)
+        if logical.aggregated:
+            lf = agg_frame(view.frame, logical, deterministic=req.options.deterministic)
+        else:
+            lf = leaf_frame(view.frame, logical, k.config.limits)
+        from pylibs_calc.spec.formula import to_formula
+
+        derives = {d.name: to_formula(d.expr.node) for d in logical.derives}
+        identity = k.identity(view.identity(), req.query, req.options, ctx)
+        return {
+            "fingerprint": fingerprint(identity),
+            "dataset": {"id": view.dataset.id, "version": view.dataset.version},
+            "steps": view.canonical,
+            "extensions": {t.name: t.plan.explain() for t in view.transforms},
+            "lineage": {"derived": derives},
+            "columns": {name: str(t) for name, t in logical.output.items()},
+            "plan": lf.explain(),
+        }
+
+    def distinct_values(
+        self,
+        dataset: str | DatasetRef,
+        column: str,
+        *,
+        extensions: Mapping[str, Any] | None = None,
+        filter: str | None = None,
+        limit: int = 1000,
+        ctx: CalcContext | None = None,
+    ) -> list[Any]:
+        """Sorted distinct values of a column (nulls last), e.g. for a set filter."""
+        request: dict[str, Any] = {
+            "spec_version": 2,
+            "dataset": dataset if isinstance(dataset, str) else dataset.model_dump(),
+            "extensions": dict(extensions or {}),
+            "query": {"group_by": [column], "page": {"limit": limit}},
+        }
+        if filter is not None:
+            request["query"]["filter"] = filter
+        result = self.run(request, ctx)
+        return result.frame[column].to_list()
+
+    def call(
+        self, operation: str, request: BaseModel | Mapping[str, Any], ctx: CalcContext | None = None
+    ) -> Any:
+        """Run a plugin operation (see :class:`~pylibs_calc.plugins.OperationDef`)."""
+        op: OperationDef | None = self.registry.operations.get(operation)
+        if op is None:
+            raise CalcError(
+                f"unknown operation: {operation}",
+                code="unknown_operation",
+                detail={"available": sorted(self.registry.operations)},
+            )
+        req = self.kernel.parse(op.request_model, request)
+        return op.run(self.kernel, req, ctx or CalcContext())
 
 
 def _page(frame: pl.DataFrame, page: Page | None) -> pl.DataFrame:

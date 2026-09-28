@@ -39,7 +39,7 @@ containers:
 ```python
 engine = CalcEngine(
     catalog,
-    RedisScenarioStore(redis.Redis.from_url(os.environ["REDIS_URL"])),
     EngineConfig(max_concurrent=2, queue_timeout_s=10, default_timeout_s=30),
+    plugins=[WhatIfPlugin(store=RedisScenarioStore(redis.Redis.from_url(os.environ["REDIS_URL"])))],
 )
 ```

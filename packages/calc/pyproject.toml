@@ -1,7 +1,7 @@
 [project]
 name = "pylibs-calc"
-version = "0.1.0"
-description = "Embeddable what-if calculation engine on Polars: filters, overrides, shocks, derived columns, group-by, rollup, pivot and scenarios."
+version = "0.2.0"
+description = "Embeddable calculation engine on Polars: filters, derived columns, group-by, rollup, pivot and compare, extensible with plugins."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
@@ -21,7 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 fastapi = ["fastapi>=0.115"]
-redis = ["redis>=5"]
+testing = ["hypothesis>=6.100"]
 
 [project.urls]
 Repository = "https://github.com/sanjaysharmagwl/py-libs"

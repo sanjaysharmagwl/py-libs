@@ -12,9 +12,17 @@ The fields of a request can be written in any order. The engine always evaluates
 
 ```mermaid
 flowchart TB
-    A["1 · Dataset version<br/>after the caller's <code>row_filter</code> and <code>allowed_columns</code>"] --> B["2 · Value changes, in order<br/>the saved scenario's overrides and shocks, then the request's <code>what_if</code> ones"]
-    B --> C["3 · Formulas<br/>the scenario's and the request's, recomputed from the final values"]
-    C --> D["4 · The query"]
+    A["1 · Dataset version<br/>after the caller's <code>row_filter</code> and <code>allowed_columns</code>"] --> T["2 · Plugin transforms<br/>one per <code>extensions</code> block, in the order the plugins were installed"]
+    T --> D["3 · The query"]
+```
+
+## Inside the what-if transform
+
+The [what-if plugin](../whatif/index.md)'s transform has its own fixed order:
+
+```mermaid
+flowchart TB
+    B["Value changes, in order<br/>the saved scenario's overrides and shocks, then the request's own <code>steps</code>"] --> C["Formulas<br/>the scenario's and the request's, recomputed from the final values"]
 ```
 
 ## Inside the query
@@ -36,5 +44,6 @@ Without `group_by` or `measures`, stages 3–7 are skipped and the query returns
 ## Why the order matters
 
 - **Entitlements come first.** A `row_filter` is applied before anything else, so a total can never include rows the caller may not see.
-- **Formulas see final values.** A price override still changes a `notional` formula, even when the override is appended later or sent as a one-off `what_if` on top of a saved scenario. See [Formula columns](../scenarios/formula.md).
+- **Plugins see the caller's data only.** Transforms run after the entitlements, so a plugin can't reintroduce hidden rows or columns.
+- **Formulas see final values.** A price override still changes a `notional` formula, even when the override is appended later or sent as a one-off step on top of a saved scenario. See [Formula columns](../scenarios/formula.md).
 - **`filter` comes before aggregation, `having` after it.** To keep only large positions, use `filter`. To keep only large desks, use `having`.

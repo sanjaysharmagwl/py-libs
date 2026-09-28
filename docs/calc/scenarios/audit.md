@@ -31,7 +31,7 @@ Every result carries the information needed to **reproduce**, **explain** and **
 **1. The fingerprint.** `meta.fingerprint` is a SHA-256 of the canonical, fully resolved request:
 
 - the dataset version
-- the effective scenario steps
+- the effective steps of every plugin transform (e.g. what-if steps after disables)
 - the query
 - the numeric settings
 - the caller's entitlements
@@ -40,13 +40,13 @@ Every result carries the information needed to **reproduce**, **explain** and **
 
 **2. Explain.** `engine.explain(request)` (or `POST /calc/explain`) returns:
 
-- `steps`: the steps that actually apply, after disables
-- `lineage.changed_by`: which steps changed each column
-- `lineage.formulas` and `lineage.derived`: the formula behind every computed column
+- `steps`: the transform steps that actually apply (for what-if, after disables)
+- `lineage.derived`: the formula behind every derived column of the query
+- `extensions`: what each plugin transform reports; for what-if, `changed_by` (which steps changed each column) and `formulas`
 - `columns`: the output types
 - `plan`: the optimized Polars plan
 
-**3. The reference evaluator.** `verify(engine, request)` evaluates the same request a second way: row by row, in pure Python, with exact `Decimal` arithmetic and no Polars. It then reports every difference. Datasets larger than `max_rows` (20,000 by default) are checked on a random sample. Run it:
+**3. The reference evaluator.** `verify(engine, request)` evaluates the same request a second way: row by row, in pure Python, with exact `Decimal` arithmetic and no Polars. It then reports every difference. Plugin transforms take part too: each supplies a pure-Python implementation next to its Polars one. Datasets larger than `max_rows` (20,000 by default) are checked on a random sample. Run it:
 
 - in a canary job
 - in CI
@@ -58,4 +58,4 @@ The test suite fuzzes thousands of random datasets and requests through it.
 
 - **`"options": {"audit": true}`** adds `meta.stage_rows`, the number of rows after each stage.
 - **`EngineConfig(on_result=...)`** receives every result's metadata and the caller's context, so you can write an audit log.
-- **`engine.scenarios.verify(id)`** checks a saved scenario's hash chain.
+- **`engine.plugin(WhatIfPlugin).scenarios.verify(id)`** checks a saved scenario's hash chain.

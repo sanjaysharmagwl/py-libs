@@ -72,7 +72,9 @@ CASES: list[dict[str, Any]] = [
         "kind": "run",
         "request": {
             "dataset": "positions",
-            "what_if": [{"kind": "shock", "column": "price", "op": "pct", "value": 5}],
+            "extensions": {
+                "whatif": {"steps": [{"kind": "shock", "column": "price", "op": "pct", "value": 5}]}
+            },
             "query": {"filter": "position_id == 6", "select": ["position_id", "price"]},
         },
     },
@@ -83,9 +85,19 @@ CASES: list[dict[str, Any]] = [
         "kind": "run",
         "request": {
             "dataset": "positions",
-            "what_if": [
-                {"kind": "shock", "column": "quantity", "op": "pct", "value": "3.3", "round": True}
-            ],
+            "extensions": {
+                "whatif": {
+                    "steps": [
+                        {
+                            "kind": "shock",
+                            "column": "quantity",
+                            "op": "pct",
+                            "value": "3.3",
+                            "round": True,
+                        }
+                    ]
+                }
+            },
             "query": {"filter": "position_id == 2", "select": ["position_id", "quantity"]},
         },
     },
@@ -157,13 +169,19 @@ CASES: list[dict[str, Any]] = [
         "kind": "run",
         "request": {
             "dataset": "positions",
-            "what_if": [
-                {"kind": "formula", "name": "notional", "expr": "price * quantity"},
-                {
-                    "kind": "override",
-                    "edits": [{"key": {"position_id": 1}, "column": "price", "value": "100.00"}],
-                },
-            ],
+            "extensions": {
+                "whatif": {
+                    "steps": [
+                        {"kind": "formula", "name": "notional", "expr": "price * quantity"},
+                        {
+                            "kind": "override",
+                            "edits": [
+                                {"key": {"position_id": 1}, "column": "price", "value": "100.00"}
+                            ],
+                        },
+                    ]
+                }
+            },
             "query": {"filter": "position_id == 1", "select": ["price", "quantity", "notional"]},
         },
     },
@@ -174,12 +192,18 @@ CASES: list[dict[str, Any]] = [
         "kind": "compare",
         "request": {
             "dataset": "positions",
-            "what_if": [
-                {
-                    "kind": "override",
-                    "edits": [{"key": {"position_id": 12}, "column": "quantity", "value": -150}],
+            "extensions": {
+                "whatif": {
+                    "steps": [
+                        {
+                            "kind": "override",
+                            "edits": [
+                                {"key": {"position_id": 12}, "column": "quantity", "value": -150}
+                            ],
+                        }
+                    ]
                 }
-            ],
+            },
             "query": {
                 "filter": "desk == 'Commodities'",
                 "group_by": ["desk"],

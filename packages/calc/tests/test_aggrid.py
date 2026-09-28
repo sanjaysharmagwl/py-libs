@@ -1,4 +1,3 @@
-import json
 from typing import Any
 
 import pytest
@@ -6,7 +5,6 @@ import pytest
 from pylibs_calc import CalcEngine, Measure, SpecError
 from pylibs_calc.adapters.aggrid import (
     AgGridAdapter,
-    CellEdit,
     ServerSideRequest,
     decode_group_key,
     encode_group_key,
@@ -214,24 +212,6 @@ def test_filter_translation_is_readable(engine: CalcEngine) -> None:
     )
     assert expr is not None
     assert to_formula(expr) == "lower(coalesce(desk, '')) == 'rates'"
-
-
-def test_cell_edits_become_overrides(engine: CalcEngine) -> None:
-    schema = engine.schema("pos")
-    step = ADAPTER.edit_to_override(
-        CellEdit(colId="price", newValue="105.5", data={"id": 2, "price": 99.5}), schema
-    )
-    assert step.edits[0].key == {"id": 2} and step.edits[0].value == "105.50"
-    by_row_id = ADAPTER.edit_to_override(CellEdit(colId="qty", newValue=7, rowId="r:[3]"), schema)
-    assert by_row_id.edits[0].key == {"id": 3}
-    for bad in (
-        CellEdit(colId="id", newValue=9, data={"id": 1}),
-        CellEdit(colId="qty", newValue=1, data={"__group_key": json.dumps("rates")}),
-        CellEdit(colId="qty", newValue="many", data={"id": 1}),
-        CellEdit(colId="rates_qty", newValue=1, data={"id": 1}),
-    ):
-        with pytest.raises(SpecError):
-            ADAPTER.edit_to_override(bad, schema)
 
 
 def test_request_model_ignores_unknown_fields() -> None:

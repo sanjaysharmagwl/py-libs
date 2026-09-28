@@ -4,7 +4,8 @@
 | --- | --- | --- |
 | `422 type_mismatch` on `price * yield` | A decimal column mixed with a float column | Cast one side: `float(price) * yield`, or `price * decimal(yield, 6)`. See [Numbers](../concepts/numbers-types-nulls.md) |
 | `422 unknown_column` for a column that exists | Hidden by the caller's `allowed_columns`, or a formula column targeted by a shock or override | Check the caller's context. Edit a formula's inputs instead of the formula |
-| `422 unmatched_edits` | An override's key matches no row | Fix the key, or set `"options": {"strict_edits": false}` |
+| `422 unmatched_edits` | An override's key matches no row | Fix the key, or set `"strict_edits": false` in the `whatif` block |
+| `422 unknown_extension` / `unknown_function` / `unknown_aggregate` | The engine doesn't have the plugin that provides it | Install the plugin in the engine (`CalcEngine(..., plugins=[...])`) |
 | `422 needs_rounding` | A fractional shock on an integer column | Add `"round": true` |
 | `409 version_conflict` | Someone appended to the scenario first | Reload the scenario and retry with its new `version` |
 | `413 limit_exceeded` | A page, group count, pivot or expression over a `Limits` cap | Add a `page`, filter more, or raise the limit |

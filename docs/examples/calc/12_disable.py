@@ -3,11 +3,13 @@
 from book import engine, table
 
 from pylibs_calc import CalcContext, to_formula
+from pylibs_calc_whatif import WhatIfPlugin
 
 calc = engine()
+scenarios = calc.plugin(WhatIfPlugin).scenarios
 ana = CalcContext(principal="ana")
-s = calc.scenarios.create("positions", "credit stress", ctx=ana)
-s = calc.scenarios.append(
+s = scenarios.create("positions", "credit stress", ctx=ana)
+s = scenarios.append(
     s.id,
     [
         {
@@ -23,16 +25,17 @@ s = calc.scenarios.append(
     ctx=ana,
 )
 # Step 1 (Credit -10%) turns out to be too harsh: disable it. It stays in the log.
-s = calc.scenarios.append(s.id, [{"kind": "disable", "seq": 1}], expected_version=2, ctx=ana)
+s = scenarios.append(s.id, [{"kind": "disable", "seq": 1}], expected_version=2, ctx=ana)
 
 QUERY = {
     "filter": "desk in ('Rates', 'Credit')",
     "select": ["position_id", "desk", "price"],
     "sort": [{"by": "position_id"}],
 }
-print(table(calc.run({"dataset": "positions", "scenario": s.id, "query": QUERY})))
+request = {"dataset": "positions", "extensions": {"whatif": {"scenario": s.id}}, "query": QUERY}
+print(table(calc.run(request)))
 print("| seq | author | step |\n| --- | --- | --- |")
-for entry in calc.scenarios.log(s.id):
+for entry in scenarios.log(s.id):
     step = entry.step
     if step.kind == "shock":
         where = f" where {to_formula(step.where)}" if step.where else ""

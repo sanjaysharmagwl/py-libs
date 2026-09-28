@@ -6,7 +6,8 @@ Client setup this adapter expects::
     getRowId: p => p.data.__row_id,
     getServerSideGroupKey: d => d.__group_key,   // exact, typed group keys (nulls, dates)
     serverSidePivotResultFieldSeparator: '_',   // must match AgGridAdapter.separator
-    readOnlyEdit: true,                           // edits go through onCellEditRequest
+    readOnlyEdit: true,                           // edits go through onCellEditRequest (a plugin,
+                                                  // e.g. what-if, turns them into changes)
 
 ``__group_key`` is the JSON encoding of the group value; the adapter decodes it back using the
 column type, so null groups, dates and decimals survive the round trip.
@@ -49,10 +50,8 @@ from pylibs_calc.spec.query import (
     Page,
     Pivot,
     Query,
-    ScenarioRef,
     SortKey,
 )
-from pylibs_calc.spec.scenario import Edit, Override, ScenarioStep
 
 AUTO_GROUP_COLUMN = "ag-Grid-AutoColumn"
 
@@ -99,15 +98,6 @@ class RowsResponse(BaseModel):
     pivotResultFields: list[str] | None = None
 
 
-class CellEdit(_Lenient):
-    """The useful part of AG Grid's ``CellEditRequestEvent``."""
-
-    colId: str
-    newValue: Any = None
-    data: dict[str, Any] | None = None
-    rowId: str | None = None
-
-
 @dataclass(frozen=True)
 class Shape:
     """How to decorate result rows for the grid."""
@@ -147,8 +137,7 @@ class AgGridAdapter:
         *,
         dataset: str | DatasetRef,
         schema: DatasetSchema,
-        scenario: str | ScenarioRef | None = None,
-        what_if: Sequence[ScenarioStep] = (),
+        extensions: Mapping[str, Any] | None = None,
         options: Options | None = None,
         pivot_domain: Sequence[Sequence[Any]] | None = None,
     ) -> tuple[CalcRequest, Shape]:
@@ -221,8 +210,7 @@ class AgGridAdapter:
             shape = Shape("leaf", None, None, tuple(ssrm.groupKeys), keys, key_types)
         request = CalcRequest(
             dataset=DatasetRef.model_validate(dataset),
-            scenario=None if scenario is None else ScenarioRef.model_validate(scenario),
-            what_if=tuple(what_if),
+            extensions=dict(extensions or {}),
             query=query,
             options=options or Options(),
         )
@@ -234,8 +222,7 @@ class AgGridAdapter:
         *,
         dataset: str | DatasetRef,
         schema: DatasetSchema,
-        scenario: str | ScenarioRef | None = None,
-        what_if: Sequence[ScenarioStep] = (),
+        extensions: Mapping[str, Any] | None = None,
     ) -> CalcRequest | None:
         """The request for the pivot values, filtered by the filter model only (not by group
         keys), so every block of the grid gets the same pivot columns."""
@@ -245,8 +232,7 @@ class AgGridAdapter:
         on = tuple(c.column for c in ssrm.pivotCols)
         return CalcRequest(
             dataset=DatasetRef.model_validate(dataset),
-            scenario=None if scenario is None else ScenarioRef.model_validate(scenario),
-            what_if=tuple(what_if),
+            extensions=dict(extensions or {}),
             query=Query(filter=where, group_by=on, page=Page(limit=self.max_pivot_values + 1)),
         )
 
@@ -469,8 +455,7 @@ class AgGridAdapter:
         ssrm: ServerSideRequest | Mapping[str, Any],
         *,
         dataset: str | DatasetRef,
-        scenario: str | ScenarioRef | None = None,
-        what_if: Sequence[ScenarioStep] = (),
+        extensions: Mapping[str, Any] | None = None,
         ctx: CalcContext | None = None,
     ) -> RowsResponse:
         """Answer one SSRM ``getRows`` call end to end (engine: a :class:`CalcEngine`)."""
@@ -481,7 +466,7 @@ class AgGridAdapter:
         schema = engine.schema(ref.id, ref.version, ctx=ctx)
         domain = None
         domain_request = self.pivot_domain_request(
-            request, dataset=ref, schema=schema, scenario=scenario, what_if=what_if
+            request, dataset=ref, schema=schema, extensions=extensions
         )
         if domain_request is not None:
             on = domain_request.query.group_by
@@ -496,44 +481,10 @@ class AgGridAdapter:
             request,
             dataset=ref,
             schema=schema,
-            scenario=scenario,
-            what_if=what_if,
+            extensions=extensions,
             pivot_domain=domain,
         )
         return self.to_response(engine.run(calc, ctx), shape)
-
-    # --- Edits ------------------------------------------------------------------------------
-
-    def edit_to_override(self, edit: CellEdit, schema: DatasetSchema) -> Override:
-        """Turn a grid cell edit into an override step (leaf rows only)."""
-        keys = schema.key_columns
-        if not keys:
-            raise SpecError("editing needs a dataset with key columns", code="no_key_columns")
-        data = edit.data or {}
-        if "__group_key" in data:
-            raise SpecError(
-                "group rows cannot be edited; edit the rows inside", code="not_editable"
-            )
-        types = schema.ltypes()
-        if edit.colId not in types:
-            raise SpecError(f"column {edit.colId} cannot be edited", code="not_editable")
-        meta = schema.column(edit.colId)
-        if not meta.editable:
-            raise SpecError(f"column {edit.colId} is not editable", code="not_editable")
-        if all(k in data for k in keys):
-            raw = [data[k] for k in keys]
-        elif edit.rowId and edit.rowId.startswith("r:"):
-            raw = json.loads(edit.rowId[2:])
-        else:
-            raise SpecError("the edit carries no row key", code="invalid_key")
-        key = {
-            k: json_value(coerce_value(v, types[k], what=f"key {k}"), types[k])
-            for k, v in zip(keys, raw, strict=True)
-        }
-        value = coerce_value(edit.newValue, meta.ltype, what=f"value for {edit.colId}")
-        return Override(
-            edits=(Edit(key=key, column=edit.colId, value=json_value(value, meta.ltype)),)
-        )
 
 
 def encode_group_key(value: Any, ltype: LType) -> str:

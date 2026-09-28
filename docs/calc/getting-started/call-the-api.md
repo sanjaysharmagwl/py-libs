@@ -34,7 +34,7 @@ The response is `{"rows": [...], "meta": {...}}`. `meta.fingerprint` (also sent 
 ```bash
 curl -s localhost:8000/calc/compare -H 'Content-Type: application/json' -d '{
   "dataset": "positions",
-  "what_if": [{"kind": "shock", "column": "price", "op": "pct", "value": -5, "where": "sector == '"'"'Energy'"'"'"}],
+  "extensions": {"whatif": {"steps": [{"kind": "shock", "column": "price", "op": "pct", "value": -5, "where": "sector == '"'"'Energy'"'"'"}]}},
   "query": {
     "group_by": ["sector"],
     "measures": [{"name": "mv", "fn": "sum", "of": "price * quantity"}],
@@ -75,9 +75,13 @@ Errors come back with an HTTP status and a body such as:
 | Route | Purpose |
 | --- | --- |
 | `POST /calc/query`, `/compare`, `/explain` | Run, compare or explain a request |
-| `POST /calc/distinct` | Distinct values of a column: `{"dataset", "column", "filter"?, "limit"?}` |
+| `POST /calc/distinct` | Distinct values of a column: `{"dataset", "column", "extensions"?, "filter"?, "limit"?}` |
 | `GET /calc/datasets`, `/datasets/{id}/schema` | Datasets and their columns |
-| `GET/POST /calc/scenarios`, `GET/DELETE /calc/scenarios/{id}` | List, create, read and delete saved scenarios |
-| `POST /calc/scenarios/{id}/steps`, `/fork` | Append steps (with `expected_version`), and fork |
-| `GET /calc/scenarios/{id}/log`, `/verify` | Read the log, and check its hash chain |
-| `POST /calc/aggrid/rows`, `/aggrid/edit` | AG Grid server-side row model |
+| `POST /calc/aggrid/rows` | AG Grid server-side row model |
+| `GET /calc/operations`, `POST /calc/operations/{name}` | List and run [plugin operations](../concepts/plugins.md#operations) |
+| `GET/POST /calc/scenarios`, `GET/DELETE /calc/scenarios/{id}` | What-if plugin: list, create, read and delete saved scenarios |
+| `POST /calc/scenarios/{id}/steps`, `/fork` | What-if plugin: append steps (with `expected_version`), and fork |
+| `GET /calc/scenarios/{id}/log`, `/verify` | What-if plugin: read the log, and check its hash chain |
+| `POST /calc/aggrid/edit` | What-if plugin: save a grid cell edit as a scenario override |
+
+Plugin routes exist only when the plugin is installed in the engine.

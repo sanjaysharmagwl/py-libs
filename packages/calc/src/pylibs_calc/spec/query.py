@@ -13,16 +13,17 @@ Without ``group_by`` or ``measures`` the query returns rows (a leaf view), optio
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 from pydantic import Field, model_validator
 
 from pylibs_calc.dtypes import Scalar
 from pylibs_calc.spec.base import Model
 from pylibs_calc.spec.expr import Expr
-from pylibs_calc.spec.scenario import ScenarioStep
 
 AggFn = Literal["sum", "mean", "min", "max", "count", "count_rows", "count_distinct", "wavg"]
+BUILTIN_AGGS: frozenset[str] = frozenset(get_args(AggFn))
+AGG_NAME_PATTERN = r"^[a-z][a-z0-9_]*$"
 
 
 class Derive(Model):
@@ -46,17 +47,24 @@ class Measure(Model):
     ``where`` works like SQL ``FILTER (WHERE ...)``: it narrows the rows this measure sees without
     changing which groups exist. ``wavg`` is ``sum(of * weight) / sum(weight)`` over rows where
     both are present, recomputed at every level (never an average of averages). ``sum`` of no
-    values is null, as in SQL.
+    values is null, as in SQL. Any other ``fn`` must be an aggregate registered by a plugin; it
+    takes ``of`` and sees the non-null values of each group.
     """
 
     name: str = Field(min_length=1)
-    fn: AggFn
+    fn: str = Field(pattern=AGG_NAME_PATTERN)
     of: Expr | None = None
     weight: Expr | None = None
     where: Expr | None = None
 
     @model_validator(mode="after")
     def _args(self) -> Measure:
+        if self.fn not in BUILTIN_AGGS:
+            if self.of is None:
+                raise ValueError(f"{self.fn} needs 'of'")
+            if self.weight is not None:
+                raise ValueError("'weight' is only allowed for wavg")
+            return self
         if self.fn == "count_rows":
             if self.of is not None:
                 raise ValueError("count_rows counts rows and takes no 'of'")
@@ -153,58 +161,54 @@ class DatasetRef(Model):
         return {"id": data} if isinstance(data, str) else data
 
 
-class ScenarioRef(Model):
-    """A saved scenario and, optionally, a version (log length) to read it at."""
-
-    id: str = Field(min_length=1)
-    version: int | None = Field(default=None, ge=0)
-
-    @model_validator(mode="before")
-    @classmethod
-    def _from_str(cls, data: Any) -> Any:
-        return {"id": data} if isinstance(data, str) else data
-
-
 class Options(Model):
     """Execution options.
 
     ``deterministic`` makes float sums independent of thread scheduling (values are summed in
-    sorted order per group; slower). ``strict_edits`` rejects overrides whose key matches no row.
-    ``audit`` records row counts per stage in the result metadata (one extra pass per stage).
+    sorted order per group; slower). ``audit`` records row counts per stage in the result
+    metadata (one extra pass per stage).
     """
 
     deterministic: bool = False
-    strict_edits: bool = True
     engine: Literal["auto", "in-memory", "streaming"] = "auto"
     timeout_s: float | None = Field(default=None, gt=0)
     audit: bool = False
 
 
-class CalcRequest(Model):
-    """Run ``query`` over ``dataset`` with a saved ``scenario`` and extra ``what_if`` steps."""
+Extensions = dict[str, Any]
+"""Plugin transform blocks by transform name, e.g. ``{"whatif": {"steps": [...]}}``."""
 
-    spec_version: Literal[1] = 1
+
+class CalcRequest(Model):
+    """Run ``query`` over ``dataset``, after the plugin transforms named in ``extensions``."""
+
+    spec_version: Literal[2] = 2
     dataset: DatasetRef
-    scenario: ScenarioRef | None = None
-    what_if: tuple[ScenarioStep, ...] = ()
+    extensions: Extensions = Field(default_factory=dict)
     query: Query = Query()
     options: Options = Options()
+
+
+class Side(Model):
+    """The base side of a comparison: its own ``extensions`` and, optionally, another version
+    of the dataset."""
+
+    version: str | None = None
+    extensions: Extensions = Field(default_factory=dict)
 
 
 class CompareRequest(Model):
     """Run the same query on two sides and join them: ``m``, ``m__base``, ``m__delta``, ``m__pct``.
 
-    The target side is ``scenario`` + ``what_if``; the base side is ``base`` + ``base_what_if``
-    (the unmodified dataset when both are empty). Aggregated queries join on the group columns,
-    row views on the dataset key columns.
+    The target side is ``dataset`` with ``extensions``; the base side is ``base`` (by default the
+    unmodified dataset). Aggregated queries join on the group columns, row views on the dataset
+    key columns.
     """
 
-    spec_version: Literal[1] = 1
+    spec_version: Literal[2] = 2
     dataset: DatasetRef
-    scenario: ScenarioRef | None = None
-    what_if: tuple[ScenarioStep, ...] = ()
-    base: ScenarioRef | None = None
-    base_what_if: tuple[ScenarioStep, ...] = ()
+    extensions: Extensions = Field(default_factory=dict)
+    base: Side = Side()
     query: Query = Query()
     options: Options = Options()
 

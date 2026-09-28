@@ -31,6 +31,8 @@ print(table(positions()))
 
 ## Pages
 
+### Core engine
+
 | Feature | Business question |
 | --- | --- |
 | [Filter and derive](filter-derive.md) | What is my EMEA book, with notionals? |
@@ -41,12 +43,19 @@ print(table(positions()))
 | [Subtotals (rollup)](rollup.md) | Book, region and desk totals in one grid |
 | [Pivot](pivot.md) | A desk × region exposure matrix |
 | [Sort and page](sort-page.md) | The biggest positions, a page at a time |
+| [Compare two sides](compare.md) | What is the P&L impact of a sell-off? |
+| [Access control](access-control.md) | A desk sees only its own positions |
+| [Audit a number](audit.md) | Prove where a figure came from |
+| [Errors and limits](errors-limits.md) | What the engine refuses, and why |
+
+### What-if plugin
+
+These need the [what-if plugin](../whatif/index.md) (`pylibs-calc-whatif`), which the example book's engine installs.
+
+| Feature | Business question |
+| --- | --- |
 | [Override a cell](override.md) | A trader corrects a mark |
 | [Shock a column](shock.md) | Tech +5%, yields +25bp |
 | [Formula columns](formula.md) | Keep notional correct after edits |
 | [Disable a step](disable.md) | Undo part of a scenario without losing history |
 | [Saved scenarios and forks](saved-scenarios.md) | Save a what-if, share it, branch it |
-| [Compare two sides](compare.md) | What is the P&L impact of a sell-off? |
-| [Access control](access-control.md) | A desk sees only its own positions |
-| [Audit a number](audit.md) | Prove where a figure came from |
-| [Errors and limits](errors-limits.md) | What the engine refuses, and why |

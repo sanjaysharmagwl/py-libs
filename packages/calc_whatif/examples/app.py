@@ -1,6 +1,7 @@
-"""Demo service: pylibs-calc behind FastAPI with an AG Grid (server-side row model) page.
+"""Demo service: pylibs-calc with the what-if plugin behind FastAPI, and an AG Grid
+(server-side row model) page.
 
-    uv run --with uvicorn uvicorn --app-dir packages/calc/examples app:app --port 8000
+    uv run --with uvicorn uvicorn --app-dir packages/calc_whatif/examples app:app --port 8000
 
 Then open http://localhost:8000. Set ROWS to change the size of the synthetic book, and
 REDIS_URL to keep scenarios in Redis instead of process memory.
@@ -15,8 +16,9 @@ import polars as pl
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
-from pylibs_calc import CalcEngine, Catalog, InMemoryScenarioStore, ScenarioStore, runtime_check
+from pylibs_calc import CalcEngine, Catalog, runtime_check
 from pylibs_calc.integrations.fastapi import create_router
+from pylibs_calc_whatif import InMemoryScenarioStore, ScenarioStore, WhatIfPlugin
 
 
 def synthetic_book(rows: int) -> pl.DataFrame:
@@ -50,7 +52,7 @@ def scenario_store() -> ScenarioStore:
         return InMemoryScenarioStore()
     import redis
 
-    from pylibs_calc.scenario.redis_store import RedisScenarioStore
+    from pylibs_calc_whatif.scenario.redis_store import RedisScenarioStore
 
     return RedisScenarioStore(redis.Redis.from_url(url))
 
@@ -63,9 +65,9 @@ catalog.register_frame(
     key_columns=["position_id"],
     editable=["price", "quantity", "yield", "rating"],
 )
-engine = CalcEngine(catalog, scenario_store())
+engine = CalcEngine(catalog, plugins=[WhatIfPlugin(store=scenario_store())])
 
-app = FastAPI(title="pylibs-calc demo")
+app = FastAPI(title="pylibs-calc what-if demo")
 app.include_router(create_router(engine, prefix="/calc"))
 
 

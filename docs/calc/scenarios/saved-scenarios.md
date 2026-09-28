@@ -1,8 +1,8 @@
 ---
 covers:
-  - packages/calc/src/pylibs_calc/scenario/manager.py
-  - packages/calc/src/pylibs_calc/scenario/model.py
-  - packages/calc/src/pylibs_calc/scenario/store.py
+  - packages/calc_whatif/src/pylibs_calc_whatif/scenario/manager.py
+  - packages/calc_whatif/src/pylibs_calc_whatif/scenario/model.py
+  - packages/calc_whatif/src/pylibs_calc_whatif/scenario/store.py
 ---
 
 # Saved scenarios and forks
@@ -10,6 +10,10 @@ covers:
 !!! question "The business question"
     *"Save a 'Tech rally' scenario that my team can reopen. Then branch it to try a hedge,
     without touching the original."*
+
+!!! info "What-if plugin"
+    This feature comes from the [what-if plugin](../whatif/index.md) (`pylibs-calc-whatif`). Its
+    steps go in a request's `extensions.whatif` block.
 
 A **saved scenario** is a named, append-only log of steps ([overrides](override.md), [shocks](shock.md), [formulas](formula.md) and [disables](disable.md)), pinned to one version of a dataset. It stores the changes, not a copy of the data.
 
@@ -33,7 +37,7 @@ A **saved scenario** is a named, append-only log of steps ([overrides](override.
 - **Forks are independent.** The hedged fork copies the effective steps and then diverges; the original is unchanged.
 - **Tamper-evident.** Each log entry is hashed together with the previous one. `verify()` recomputes the chain, and any edit to the stored log shows up.
 
-`engine.scenarios` is the `ScenarioManager`: `create`, `append`, `fork`, `get`, `log`, `list`, `delete` and `verify`. `log()` returns `LogEntry` records (sequence number, step, author, time, note and hash).
+`engine.plugin(WhatIfPlugin).scenarios` is the `ScenarioManager`: `create`, `append`, `fork`, `get`, `log`, `list`, `delete` and `verify`. `log()` returns `LogEntry` records (sequence number, step, author, time, note and hash).
 
 ## Over HTTP
 
@@ -47,7 +51,7 @@ curl -s localhost:8000/calc/scenarios/$ID/steps -H 'Content-Type: application/js
   -d '{"expected_version": 0, "steps": [{"kind": "shock", "column": "price", "op": "pct", "value": 8, "where": "sector == '\''Tech'\''"}]}'
 # query it
 curl -s localhost:8000/calc/query -H 'Content-Type: application/json' \
-  -d '{"dataset": "positions", "scenario": "'$ID'", "query": {"group_by": ["sector"], "measures": [{"name": "mv", "fn": "sum", "of": "price * quantity"}]}}'
+  -d '{"dataset": "positions", "extensions": {"whatif": {"scenario": "'$ID'"}}, "query": {"group_by": ["sector"], "measures": [{"name": "mv", "fn": "sum", "of": "price * quantity"}]}}'
 # fork, read the log, check the hash chain
 curl -s localhost:8000/calc/scenarios/$ID/fork -H 'Content-Type: application/json' -d '{"name": "hedged"}'
 curl -s localhost:8000/calc/scenarios/$ID/log
@@ -59,4 +63,5 @@ curl -s localhost:8000/calc/scenarios/$ID/verify
 - **Pinned to a dataset version.** A scenario keeps working after a data refresh for as long as the catalog keeps the old version (`Catalog(max_versions=2)` keeps two). Moving a scenario onto a newer dataset version is not supported yet.
 - **Validated on every append.** Every step is checked against the dataset before it is stored, together with the whole log, so a bad step is refused rather than breaking later queries.
 - **Deleting only hides a scenario**, so the audit trail stays.
+- A request reads a scenario at a version with `"extensions": {"whatif": {"scenario": {"id": ..., "version": 3}}}`, and can add ad-hoc `steps` on top; its `meta.extensions.whatif` reports the scenario and its head hash.
 - `InMemoryScenarioStore` loses everything on restart. In production, use the [Redis store](../integrations/redis.md).

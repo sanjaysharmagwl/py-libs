@@ -1,7 +1,10 @@
-"""Embeddable what-if calculation engine on Polars.
+"""Embeddable calculation engine on Polars, extensible with plugins.
 
-Filters, overrides, shocks, derived columns, group-by, rollup, pivot and saved scenarios, with
-exact decimal arithmetic, reproducible fingerprints and a pure-Python reference evaluator.
+The core filters, derives, groups, aggregates (with filtered and weighted measures), rolls up,
+pivots, sorts, pages and compares, with exact decimal arithmetic, reproducible fingerprints and
+a pure-Python reference evaluator. Plugins (:mod:`pylibs_calc.plugins`) add functions,
+aggregates, dataset transforms, operations and HTTP routes; what-if analysis is the
+``pylibs-calc-whatif`` plugin.
 """
 
 from importlib.metadata import version
@@ -9,7 +12,7 @@ from importlib.metadata import version
 from pylibs_calc.catalog import Catalog, Dataset, DatasetCatalog
 from pylibs_calc.config import CalcContext, Limits
 from pylibs_calc.dtypes import NumericConfig
-from pylibs_calc.engine import CalcEngine, EngineConfig
+from pylibs_calc.engine import CalcEngine, EngineConfig, Kernel, View
 from pylibs_calc.errors import (
     CalcError,
     CalcTimeout,
@@ -19,19 +22,25 @@ from pylibs_calc.errors import (
     Forbidden,
     LimitExceeded,
     NotFound,
-    ScenarioNotFound,
     SpecError,
     VersionConflict,
 )
 from pylibs_calc.exec import RuntimeReport, runtime_check
-from pylibs_calc.result import CalcResult, ColumnInfo, ResultMeta
-from pylibs_calc.scenario import (
-    InMemoryScenarioStore,
-    LogEntry,
-    Scenario,
-    ScenarioManager,
-    ScenarioStore,
+from pylibs_calc.plugins import (
+    AggregateDef,
+    BindContext,
+    Bound,
+    FunctionDef,
+    OperationDef,
+    PlanContext,
+    Plugin,
+    PluginError,
+    Registry,
+    TransformDef,
+    TransformPlan,
+    discover_plugins,
 )
+from pylibs_calc.result import CalcResult, ColumnInfo, ResultMeta
 from pylibs_calc.schema import ColumnMeta, DatasetSchema
 from pylibs_calc.spec.canonical import canonical_json, fingerprint
 from pylibs_calc.spec.expr import col, lit
@@ -47,12 +56,14 @@ from pylibs_calc.spec.query import (
     Pivot,
     PostAgg,
     Query,
-    ScenarioRef,
+    Side,
     SortKey,
 )
-from pylibs_calc.spec.scenario import Disable, Edit, Formula, Override, Shock
 
 __all__ = [
+    "AggregateDef",
+    "BindContext",
+    "Bound",
     "CalcContext",
     "CalcEngine",
     "CalcError",
@@ -70,39 +81,39 @@ __all__ = [
     "DatasetRef",
     "DatasetSchema",
     "Derive",
-    "Disable",
-    "Edit",
     "EngineBusy",
     "EngineConfig",
     "Forbidden",
-    "Formula",
-    "InMemoryScenarioStore",
+    "FunctionDef",
+    "Kernel",
     "LimitExceeded",
     "Limits",
-    "LogEntry",
     "Measure",
     "NotFound",
     "NumericConfig",
+    "OperationDef",
     "Options",
-    "Override",
     "Page",
     "Pivot",
+    "PlanContext",
+    "Plugin",
+    "PluginError",
     "PostAgg",
     "Query",
+    "Registry",
     "ResultMeta",
     "RuntimeReport",
-    "Scenario",
-    "ScenarioManager",
-    "ScenarioNotFound",
-    "ScenarioRef",
-    "ScenarioStore",
-    "Shock",
+    "Side",
     "SortKey",
     "SpecError",
+    "TransformDef",
+    "TransformPlan",
     "VersionConflict",
+    "View",
     "__version__",
     "canonical_json",
     "col",
+    "discover_plugins",
     "fingerprint",
     "lit",
     "parse_formula",

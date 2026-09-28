@@ -1,8 +1,8 @@
 """The book of positions every documentation example runs against.
 
 Twelve positions across five desks, with the same columns as the demo service in
-``packages/calc/examples/app.py``, so the JSON requests in the docs also work against the demo with
-curl (the numbers differ, because the demo generates 200,000 rows).
+``packages/calc_whatif/examples/app.py``, so the JSON requests in the docs also work against the
+demo with curl (the numbers differ, because the demo generates 200,000 rows).
 
 Negative quantities are short positions. ``yield`` is null where it doesn't apply (equities and
 FX). ``price`` is an exact decimal, as a mark would be in a risk system.
@@ -18,7 +18,8 @@ from typing import Any
 
 import polars as pl
 
-from pylibs_calc import CalcEngine, CalcResult, Catalog, InMemoryScenarioStore
+from pylibs_calc import CalcEngine, CalcResult, Catalog
+from pylibs_calc_whatif import InMemoryScenarioStore, WhatIfPlugin
 
 HERE = Path(__file__).resolve().parent
 DATASET_VERSION = "2026-09-30"
@@ -121,7 +122,8 @@ def positions() -> pl.DataFrame:
 
 
 def engine() -> CalcEngine:
-    """An engine with the book registered as ``positions``, and an in-memory scenario store."""
+    """An engine with the book registered as ``positions`` and the what-if plugin installed,
+    with an in-memory scenario store."""
     catalog = Catalog()
     catalog.register_frame(
         "positions",
@@ -130,7 +132,7 @@ def engine() -> CalcEngine:
         version=DATASET_VERSION,
         editable=["price", "quantity", "yield", "rating"],
     )
-    return CalcEngine(catalog, InMemoryScenarioStore())
+    return CalcEngine(catalog, plugins=[WhatIfPlugin(store=InMemoryScenarioStore())])
 
 
 def table(result: CalcResult | pl.DataFrame, *, max_rows: int = 20) -> str:

@@ -2,7 +2,8 @@
 
 ``verify(engine, request)`` resolves the request exactly as ``engine.run`` would, takes the
 dataset rows (a random sample of ``max_rows`` if there are more), runs the Polars engine and the
-reference evaluator on those same rows and reports any difference. Use it in tests, in a
+reference evaluator (including every plugin transform's reference implementation) on those same
+rows and reports any difference. Use it in tests, in a
 canary job, or before trusting a new Polars version in production.
 """
 
@@ -12,7 +13,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from pylibs_calc.compile.mutations import apply_mutations as polars_mutations
 from pylibs_calc.compile.query import TOTAL, leaf_frame
 from pylibs_calc.config import CalcContext
 from pylibs_calc.spec.canonical import fingerprint
@@ -47,19 +47,22 @@ def verify(
     rel_tol: float = 1e-9,
     abs_tol: float = 1e-9,
 ) -> VerifyReport:
-    req = engine.parse(CalcRequest, request)
+    kernel = engine.kernel
+    req = kernel.parse(CalcRequest, request)
     ctx = ctx or CalcContext()
     query = req.query.model_copy(update={"page": None})
-    with engine._executor.slot():
-        side = engine._resolve_side(req.dataset, req.scenario, req.what_if, ctx, False, None)
-        logical = engine._plan_query(query, side)
-        base = side.base.collect()
+    with kernel.slot():
+        view = kernel.resolve_view(req.dataset, req.extensions, ctx, deadline=None)
+        logical = kernel.plan_query(query, view)
+        base = view.base.collect()
         sampled = base.height > max_rows
         if sampled:
             base = base.sample(n=max_rows, seed=seed)
-        frame = polars_mutations(base.lazy(), side.mutations)
+        frame = base.lazy()
+        for t in view.transforms:
+            frame = t.plan.apply(frame)
         if logical.aggregated:
-            finished = engine.evaluate_aggregate(
+            finished = kernel.evaluate_aggregate(
                 frame,
                 logical,
                 engine="in-memory",
@@ -70,12 +73,14 @@ def verify(
             columns = finished.columns
             fields = finished.pivot_fields
         else:
-            limits = engine.config.limits
+            limits = kernel.config.limits
             df = leaf_frame(frame, logical, limits, row_limit=max_rows + 1).collect()
             actual = df.drop(TOTAL).to_dicts()
             columns = dict(logical.output)
             fields = None
-    rows = reference.apply_mutations(base.to_dicts(), side.mutations)
+    rows = base.to_dicts()
+    for t in view.transforms:
+        rows = t.plan.apply_reference(rows)
     expected = reference.run_query(rows, logical)
     problems = []
     if fields != expected.pivot_fields:
@@ -87,7 +92,7 @@ def verify(
     problems += reference.diff_rows(
         actual, expected.rows, expected.columns, rel_tol=rel_tol, abs_tol=abs_tol
     )
-    identity = {"dataset": side.identity(), "query": query, "sample": [sampled, seed, max_rows]}
+    identity = {"dataset": view.identity(), "query": query, "sample": [sampled, seed, max_rows]}
     return VerifyReport(
         ok=not problems,
         fingerprint=fingerprint(identity),

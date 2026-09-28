@@ -57,14 +57,14 @@ catalog = Catalog(max_versions=2)  # keep the two most recent versions of each d
 ```
 
 - A request uses the **latest** version unless it pins one: `{"dataset": {"id": "positions", "version": "2026-09-29"}}`.
-- A [saved scenario](../scenarios/saved-scenarios.md) is pinned to the version it was created on, so it keeps working after the next refresh for as long as the catalog keeps that version.
+- A [saved scenario](../scenarios/saved-scenarios.md) (what-if plugin) is pinned to the version it was created on, so it keeps working after the next refresh for as long as the catalog keeps that version.
 - Each result records the version it used, in `meta.dataset`.
 
 ## Datasets without a key
 
 Key columns are optional, but without them:
 
-- [overrides](../scenarios/override.md) can't find rows
+- [overrides](../scenarios/override.md) (what-if plugin) can't find rows
 - [row-level compare](../scenarios/compare.md) can't join the two sides
 
 The engine adds a hidden row index so that sorting and paging stay stable.

@@ -64,17 +64,13 @@ class DatasetNotFound(NotFound):
     code = "dataset_not_found"
 
 
-class ScenarioNotFound(NotFound):
-    code = "scenario_not_found"
-
-
 class Forbidden(CalcError):
     status = 403
     code = "forbidden"
 
 
 class VersionConflict(CalcError):
-    """A scenario append used a stale ``expected_version`` or pinned mismatching versions."""
+    """A write used a stale ``expected_version``, or a request pinned mismatching versions."""
 
     status = 409
     code = "version_conflict"

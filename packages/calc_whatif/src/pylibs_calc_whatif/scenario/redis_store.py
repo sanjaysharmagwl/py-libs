@@ -1,11 +1,11 @@
 """Redis-backed scenario store: shared by every replica of a service.
 
-Needs the ``redis`` extra (``pip install 'pylibs-calc[redis]'``). Each scenario uses three keys
-that share a hash tag (``{id}``), so they live in one Redis Cluster slot and the append can be a
-single atomic Lua script: check the log length, push the entries, update the head.
+Needs the ``redis`` extra (``pip install 'pylibs-calc-whatif[redis]'``). Each scenario uses three
+keys that share a hash tag (``{id}``), so they live in one Redis Cluster slot and the append can
+be a single atomic Lua script: check the log length, push the entries, update the head.
 
 Redis persistence (AOF, replication) decides how durable the audit trail is; for audit-grade
-retention implement :class:`~pylibs_calc.scenario.store.ScenarioStore` on a database.
+retention implement :class:`~pylibs_calc_whatif.scenario.store.ScenarioStore` on a database.
 """
 
 from __future__ import annotations
@@ -19,11 +19,12 @@ try:
     from redis.typing import EncodableT
 except ImportError as exc:  # pragma: no cover - exercised only without the extra
     raise ImportError(
-        "RedisScenarioStore needs the redis package: pip install 'pylibs-calc[redis]'"
+        "RedisScenarioStore needs the redis package: pip install 'pylibs-calc-whatif[redis]'"
     ) from exc
 
-from pylibs_calc.errors import ScenarioNotFound, VersionConflict
+from pylibs_calc import VersionConflict
 
+from ..errors import ScenarioNotFound
 from .model import LogEntry, Scenario
 
 # KEYS: meta, log, ops. ARGV: client_op_id, expected_version, head, updated_at, entries...

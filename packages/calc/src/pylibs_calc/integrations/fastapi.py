@@ -6,14 +6,17 @@
     app.include_router(create_router(engine, prefix="/calc", context_resolver=my_auth))
 
 Routes are plain ``def`` functions, so FastAPI runs them in its thread pool and the event loop
-stays free while Polars computes. Errors come back as ``{"detail": {"code", "message", "path"}}``
+stays free while Polars computes. Installed plugins add their own routes (the what-if plugin adds
+``/scenarios/...`` and ``/aggrid/edit``), and every plugin operation is reachable as
+``POST /operations/{name}``. Errors come back as ``{"detail": {"code", "message", "path"}}``
 with the status of the :class:`~pylibs_calc.errors.CalcError`.
 """
 
 # No ``from __future__ import annotations`` here: FastAPI must see the route annotations, which
 # refer to aliases defined inside ``create_router``, as real objects rather than strings.
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Annotated, Any, Literal, TypeVar
 
 try:
@@ -25,11 +28,14 @@ except ImportError as exc:  # pragma: no cover - exercised only without the extr
         "the FastAPI integration needs fastapi: pip install 'pylibs-calc[fastapi]'"
     ) from exc
 
-from pylibs_calc.adapters.aggrid import AgGridAdapter, CellEdit
+from pydantic import BaseModel
+
+from pylibs_calc.adapters.aggrid import AgGridAdapter
 from pylibs_calc.config import CalcContext
 from pylibs_calc.engine import CalcEngine
 from pylibs_calc.errors import CalcError, LimitExceeded
-from pylibs_calc.result import CalcResult
+from pylibs_calc.result import CalcResult, json_safe
+from pylibs_calc.spec.canonical import upgrade
 
 ARROW_STREAM = "application/vnd.apache.arrow.stream"
 T = TypeVar("T")
@@ -54,6 +60,48 @@ def _result_response(
     if accept and ARROW_STREAM in accept:
         return Response(result.to_arrow_ipc(), media_type=ARROW_STREAM, headers=headers)
     return JSONResponse(result.to_dict(decimals=decimals), headers=headers)
+
+
+def body_extensions(body: Mapping[str, Any]) -> dict[str, Any]:
+    """The ``extensions`` of a request body; version 1 ``scenario``/``what_if`` keys are
+    upgraded."""
+    raw = {k: body[k] for k in ("scenario", "what_if", "extensions") if k in body}
+    return dict(upgrade(raw).get("extensions") or {})
+
+
+@dataclass(frozen=True)
+class RouterKit:
+    """What plugin route hooks get besides the router (see ``Registry.add_routes``).
+
+    Build the parameter aliases in the hook, e.g.
+    ``Ctx = Annotated[CalcContext, Depends(kit.context)]``, and wrap engine calls in
+    ``kit.call`` so :class:`CalcError` becomes an HTTP error. Route modules must not use
+    ``from __future__ import annotations``.
+    """
+
+    engine: CalcEngine
+    context: Callable[[Request], CalcContext]
+    adapter: AgGridAdapter
+    decimals: Literal["float", "str"]
+
+    def call(self, fn: Callable[[], T]) -> T:
+        return _call(fn)
+
+    def result_response(self, result: CalcResult, accept: str | None = None) -> Response:
+        """JSON (or Arrow, if ``accept`` asks for it) with the fingerprint headers."""
+        return _result_response(result, accept, self.decimals)
+
+    def json(self, value: Any) -> Any:
+        """A JSON-ready value: results as ``{"rows", "meta"}``, models dumped."""
+        if isinstance(value, CalcResult):
+            return value.to_dict(decimals=self.decimals)
+        if isinstance(value, BaseModel):
+            return value.model_dump(mode="json")
+        if isinstance(value, list):
+            return [self.json(v) for v in value]
+        if isinstance(value, dict):
+            return {k: self.json(v) for k, v in value.items()}
+        return json_safe(value, self.decimals)
 
 
 def create_router(
@@ -88,7 +136,6 @@ def create_router(
     )
     Ctx = Annotated[CalcContext, Depends(context)]
     Accept = Annotated[str | None, Header()]
-    IdempotencyKey = Annotated[str | None, Header(alias="Idempotency-Key")]
 
     @router.get("/datasets")
     def list_datasets(ctx: Ctx) -> list[dict[str, Any]]:
@@ -117,7 +164,7 @@ def create_router(
 
     @router.post("/distinct")
     def distinct(body: JsonBody, ctx: Ctx) -> dict[str, Any]:
-        """Body: ``{"dataset", "column", "scenario"?, "filter"?, "limit"?}``."""
+        """Body: ``{"dataset", "column", "extensions"?, "filter"?, "limit"?}``."""
 
         def run() -> dict[str, Any]:
             if "dataset" not in body or "column" not in body:
@@ -125,140 +172,50 @@ def create_router(
             values = engine.distinct_values(
                 body["dataset"],
                 body["column"],
-                scenario=body.get("scenario"),
-                what_if=body.get("what_if") or (),
+                extensions=body_extensions(body),
                 filter=body.get("filter"),
                 limit=int(body.get("limit", 1000)),
                 ctx=ctx,
             )
-            from pylibs_calc.result import json_safe
-
             return {"values": [json_safe(v, decimals) for v in values]}
 
         return _call(run)
 
     @router.post("/aggrid/rows")
     def aggrid_rows(body: JsonBody, ctx: Ctx) -> dict[str, Any]:
-        """Body: ``{"dataset", "scenario"?, "what_if"?, "request": <SSRM getRows request>}``."""
+        """Body: ``{"dataset", "extensions"?, "request": <SSRM getRows request>}``."""
 
         def run() -> dict[str, Any]:
             if "dataset" not in body or "request" not in body:
                 raise CalcError("dataset and request are required", code="invalid_request")
-            from pylibs_calc.scenario.manager import parse_steps
-
             response = adapter.rows(
                 engine,
                 body["request"],
                 dataset=body["dataset"],
-                scenario=body.get("scenario"),
-                what_if=parse_steps(body.get("what_if") or [], "/what_if"),
+                extensions=body_extensions(body),
                 ctx=ctx,
             )
             return response.model_dump(mode="json")
 
         return _call(run)
 
-    @router.post("/aggrid/edit")
-    def aggrid_edit(
-        body: JsonBody, ctx: Ctx, idempotency_key: IdempotencyKey = None
-    ) -> dict[str, Any]:
-        """Body: ``{"scenario", "expected_version", "edit": <cell edit event>, "note"?}``."""
+    @router.get("/operations")
+    def list_operations() -> list[dict[str, Any]]:
+        return [
+            {"name": op.name, "description": op.description}
+            for op in engine.registry.operations.values()
+        ]
 
-        def run() -> dict[str, Any]:
-            scenario = engine.scenarios.get(str(body.get("scenario")), ctx=ctx)
-            schema = engine.schema(scenario.dataset.id, scenario.dataset.version, ctx=ctx)
-            step = adapter.edit_to_override(CellEdit.model_validate(body.get("edit") or {}), schema)
-            updated = engine.scenarios.append(
-                scenario.id,
-                [step],
-                expected_version=int(body.get("expected_version", -1)),
-                note=body.get("note"),
-                client_op_id=idempotency_key,
-                ctx=ctx,
-            )
-            return updated.model_dump(mode="json")
+    @router.post("/operations/{name}")
+    def call_operation(name: str, body: JsonBody, ctx: Ctx, accept: Accept = None) -> Response:
+        """Run a plugin operation; results come back like ``/query`` results."""
+        result = _call(lambda: engine.call(name, body, ctx))
+        if isinstance(result, CalcResult):
+            return _result_response(result, accept, decimals)
+        return JSONResponse(kit.json(result))
 
-        return _call(run)
-
-    @router.get("/scenarios")
-    def list_scenarios(
-        ctx: Ctx, dataset: Annotated[str | None, Query()] = None
-    ) -> list[dict[str, Any]]:
-        return _call(
-            lambda: [
-                s.model_dump(mode="json") for s in engine.scenarios.list(dataset=dataset, ctx=ctx)
-            ]
-        )
-
-    @router.post("/scenarios", status_code=201)
-    def create_scenario(body: JsonBody, ctx: Ctx) -> dict[str, Any]:
-        """Body: ``{"dataset", "name", "description"?}``."""
-        return _call(
-            lambda: engine.scenarios.create(
-                body.get("dataset", ""),
-                str(body.get("name", "")),
-                description=body.get("description"),
-                ctx=ctx,
-            ).model_dump(mode="json")
-        )
-
-    @router.get("/scenarios/{scenario_id}")
-    def get_scenario(scenario_id: str, ctx: Ctx) -> dict[str, Any]:
-        return _call(lambda: engine.scenarios.get(scenario_id, ctx=ctx).model_dump(mode="json"))
-
-    @router.get("/scenarios/{scenario_id}/log")
-    def scenario_log(
-        scenario_id: str, ctx: Ctx, upto: Annotated[int | None, Query(ge=0)] = None
-    ) -> list[dict[str, Any]]:
-        return _call(
-            lambda: [
-                e.model_dump(mode="json")
-                for e in engine.scenarios.log(scenario_id, upto=upto, ctx=ctx)
-            ]
-        )
-
-    @router.post("/scenarios/{scenario_id}/steps")
-    def append_steps(
-        scenario_id: str, body: JsonBody, ctx: Ctx, idempotency_key: IdempotencyKey = None
-    ) -> dict[str, Any]:
-        """Body: ``{"steps", "expected_version", "note"?}``; 409 if the version is stale."""
-        return _call(
-            lambda: engine.scenarios.append(
-                scenario_id,
-                body.get("steps") or [],
-                expected_version=int(body.get("expected_version", -1)),
-                note=body.get("note"),
-                client_op_id=idempotency_key,
-                ctx=ctx,
-            ).model_dump(mode="json")
-        )
-
-    @router.post("/scenarios/{scenario_id}/fork", status_code=201)
-    def fork_scenario(scenario_id: str, body: JsonBody, ctx: Ctx) -> dict[str, Any]:
-        """Body: ``{"name", "at_version"?, "description"?}``."""
-        return _call(
-            lambda: engine.scenarios.fork(
-                scenario_id,
-                name=str(body.get("name", "")),
-                at_version=body.get("at_version"),
-                description=body.get("description"),
-                ctx=ctx,
-            ).model_dump(mode="json")
-        )
-
-    @router.delete("/scenarios/{scenario_id}", status_code=204)
-    def delete_scenario(scenario_id: str, ctx: Ctx) -> Response:
-        _call(lambda: engine.scenarios.delete(scenario_id, ctx=ctx))
-        return Response(status_code=204)
-
-    @router.get("/scenarios/{scenario_id}/verify")
-    def verify_scenario(scenario_id: str, ctx: Ctx) -> dict[str, Any]:
-        """Recompute the scenario's hash chain."""
-
-        def run() -> dict[str, Any]:
-            engine.scenarios.get(scenario_id, ctx=ctx)
-            return {"scenario": scenario_id, "intact": engine.scenarios.verify(scenario_id)}
-
-        return _call(run)
+    kit = RouterKit(engine=engine, context=context, adapter=adapter, decimals=decimals)
+    for hook in engine.registry.routes:
+        hook(router, kit)
 
     return router

@@ -1,5 +1,5 @@
 site_name: py-libs
-site_description: Documentation for the py-libs packages, starting with the pylibs-calc what-if engine.
+site_description: Documentation for the py-libs packages, starting with the pylibs-calc calculation engine and its what-if plugin.
 repo_url: https://github.com/sanjaysharmagwl/py-libs
 repo_name: sanjaysharmagwl/py-libs
 edit_uri: edit/master/docs/
@@ -48,7 +48,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
-          paths: [packages/calc/src, packages/core/src, packages/utils/src]
+          paths: [packages/calc/src, packages/calc_whatif/src, packages/core/src, packages/utils/src]
           options:
             docstring_style: sphinx
             show_source: false
@@ -100,6 +100,7 @@ nav:
           - Call the API with curl: calc/getting-started/call-the-api.md
       - Concepts:
           - Architecture: calc/concepts/architecture.md
+          - Plugins: calc/concepts/plugins.md
           - Datasets and the catalog: calc/concepts/datasets.md
           - Order of evaluation: calc/concepts/evaluation-order.md
           - Numbers, types and nulls: calc/concepts/numbers-types-nulls.md
@@ -114,19 +115,23 @@ nav:
           - Subtotals (rollup): calc/scenarios/rollup.md
           - Pivot: calc/scenarios/pivot.md
           - Sort and page: calc/scenarios/sort-page.md
+          - Compare two sides: calc/scenarios/compare.md
+          - Access control: calc/scenarios/access-control.md
+          - Audit a number: calc/scenarios/audit.md
+          - Errors and limits: calc/scenarios/errors-limits.md
+      - What-if plugin:
+          - calc/whatif/index.md
           - Override a cell: calc/scenarios/override.md
           - Shock a column: calc/scenarios/shock.md
           - Formula columns: calc/scenarios/formula.md
           - Disable a step: calc/scenarios/disable.md
           - Saved scenarios and forks: calc/scenarios/saved-scenarios.md
-          - Compare two sides: calc/scenarios/compare.md
-          - Access control: calc/scenarios/access-control.md
-          - Audit a number: calc/scenarios/audit.md
-          - Errors and limits: calc/scenarios/errors-limits.md
+          - Redis scenario store: calc/integrations/redis.md
+      - Extending:
+          - Write a plugin: calc/extending/write-a-plugin.md
       - Integrations:
           - FastAPI: calc/integrations/fastapi.md
           - AG Grid: calc/integrations/aggrid.md
-          - Redis scenario store: calc/integrations/redis.md
       - Operations:
           - Performance: calc/operations/performance.md
           - Deploying on Kubernetes: calc/operations/kubernetes.md

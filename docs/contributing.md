@@ -106,7 +106,7 @@ flowchart LR
 - **The public surface** of a file is taken from the graph: its public classes, functions and methods, their docstrings, and the calls and imports it makes to other modules. Line numbers are ignored, so moving code around doesn't flag anything.
 - **`docs/.docs-sync.json`** records each page's surface when it was last reviewed. When the current surface differs, the page is listed in [Docs freshness](calc/reference/generated/stale.md) with the symbols that were added and removed, and it gets a warning banner on the site.
 - **After reviewing a page** (and updating it if needed), run `--ack` for it and commit `.docs-sync.json` with your change.
-- **Coverage.** Docs freshness also lists every name in `pylibs_calc.__all__` that no page mentions.
+- **Coverage.** Docs freshness also lists every name in `pylibs_calc.__all__` and `pylibs_calc_whatif.__all__` that no page mentions.
 
 The check is deliberately **advisory**. CI fails only when the *generated* pages are out of date with `graph.json`, not when a page needs review. Use `scripts/docs_from_graph.py --fail-on-stale` if you want the stricter behaviour.
 

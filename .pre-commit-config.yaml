@@ -38,4 +38,4 @@ repos:
         entry: uv run python scripts/docs_from_graph.py
         language: system
         pass_filenames: false
-        files: ^(graphify-out/graph\.json|docs/.+\.md|docs/\.docs-sync\.json|packages/calc/src/pylibs_calc/__init__\.py|scripts/docs_from_graph\.py)$
+        files: ^(graphify-out/graph\.json|docs/.+\.md|docs/\.docs-sync\.json|packages/calc(_whatif)?/src/pylibs_calc(_whatif)?/__init__\.py|scripts/docs_from_graph\.py)$

@@ -1,7 +1,7 @@
 ---
 covers:
-  - packages/calc/src/pylibs_calc/spec/scenario.py
-  - packages/calc/src/pylibs_calc/compile/mutations.py
+  - packages/calc_whatif/src/pylibs_calc_whatif/spec.py
+  - packages/calc_whatif/src/pylibs_calc_whatif/polars.py
 ---
 
 # Override a cell
@@ -9,6 +9,10 @@ covers:
 !!! question "The business question"
     *"The mark on ACME is stale: it should be 95.00. And Globex was just downgraded to B. What
     does my Credit book look like now?"*
+
+!!! info "What-if plugin"
+    This feature comes from the [what-if plugin](../whatif/index.md) (`pylibs-calc-whatif`). Its
+    steps go in a request's `extensions.whatif` block.
 
 An **override** sets individual cells, found by the row's key. It is how a trader's manual edit in a grid gets into the calculation.
 
@@ -37,12 +41,12 @@ An **override** sets individual cells, found by the row's key. It is how a trade
 ## What to notice
 
 - **Only the two edited cells change.** Initech is untouched.
-- The edit is part of `what_if`, so it applies to **this request only**. To keep it and share it, put it in a [saved scenario](saved-scenarios.md).
+- The edit is in the request's `extensions.whatif.steps`, so it applies to **this request only**. To keep it and share it, put it in a [saved scenario](saved-scenarios.md).
 - `value` is given as the **string** `"95.00"`, so it stays an exact decimal. A JSON number would work too, but strings avoid any float rounding on the way in.
 - `key` needs a value for every key column of the dataset (here only `position_id`).
 
 ## Gotchas
 
-- An edit whose key matches no row is an error, `422 unmatched_edits`, so a typo can't silently do nothing. Set `"options": {"strict_edits": false}` to allow it; the unmatched keys are then listed in `meta.unmatched_edits`.
+- An edit whose key matches no row is an error, `422 unmatched_edits`, so a typo can't silently do nothing. Set `"strict_edits": false` in the `whatif` block to allow it; the unmatched keys are then listed in `meta.extensions.whatif.unmatched_edits`.
 - Within one override step, the last edit of the same cell wins.
 - Overrides and shocks may only change columns the dataset registered as **editable** (default: every non-key column). Key columns can never be changed. Anything else is a `422 not_editable`. See [Datasets and the catalog](../concepts/datasets.md).

@@ -13,9 +13,9 @@ from collections.abc import Sequence
 
 from pydantic import BaseModel, ConfigDict
 
-from pylibs_calc.spec.canonical import canonical_json, fingerprint
-from pylibs_calc.spec.query import DatasetRef, ScenarioRef
-from pylibs_calc.spec.scenario import ScenarioStep
+from pylibs_calc import DatasetRef, canonical_json, fingerprint
+
+from ..spec import ScenarioRef, ScenarioStep
 
 
 class Scenario(BaseModel):

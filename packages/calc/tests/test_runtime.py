@@ -13,7 +13,8 @@ from pylibs_calc.exec import Executor, cgroup_cpu_limit
 def test_importing_the_package_skips_optional_extras() -> None:
     code = (
         "import sys, pylibs_calc; "
-        "bad = [m for m in ('fastapi', 'starlette', 'redis') if m in sys.modules]; "
+        "bad = [m for m in ('fastapi', 'starlette', 'redis', 'hypothesis', 'pylibs_calc_whatif') "
+        "if m in sys.modules]; "
         "print(','.join(bad))"
     )
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)

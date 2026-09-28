@@ -15,7 +15,7 @@ covers:
 | `sortModel` | `sort` |
 | `filterModel`: `text`, `number`, `date`, `set`, combined conditions, `multi` | `filter` |
 | `startRow` / `endRow` | `page` |
-| a cell edit | an [override](../scenarios/override.md) appended to a scenario |
+| a cell edit | with the [what-if plugin](../whatif/index.md): an [override](../scenarios/override.md) appended to a scenario |
 
 ## Client setup
 
@@ -26,14 +26,18 @@ const gridOptions = {
     getRows: p => fetch('/calc/aggrid/rows', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({dataset: 'positions', scenario, request: p.request}),
+        body: JSON.stringify({
+          dataset: 'positions',
+          extensions: scenario ? {whatif: {scenario: scenario.id}} : {},   // any plugin transforms
+          request: p.request,
+        }),
       })
       .then(r => r.json()).then(d => p.success(d)).catch(() => p.fail()),
   },
   getRowId: p => p.data.__row_id,
   getServerSideGroupKey: d => d.__group_key,   // typed keys: nulls, dates and decimals round-trip
   serverSidePivotResultFieldSeparator: '_',     // must match AgGridAdapter.separator
-  readOnlyEdit: true,                           // edits go to the server as scenario overrides
+  readOnlyEdit: true,                           // edits go to the server (what-if plugin route)
   onCellEditRequest: async e => {
     scenario = await post('/calc/aggrid/edit', {
       scenario: scenario.id, expected_version: scenario.version,
@@ -44,7 +48,7 @@ const gridOptions = {
 };
 ```
 
-[`packages/calc/examples/grid.html`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/examples/grid.html) is a complete working page. See [Run the demo grid](../getting-started/run-the-demo.md).
+[`packages/calc_whatif/examples/grid.html`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/examples/grid.html) is a complete working page. See [Run the demo grid](../getting-started/run-the-demo.md).
 
 ## Customizing the adapter
 
@@ -67,6 +71,7 @@ router = create_router(engine, prefix="/calc", aggrid=adapter)
 ## Gotchas
 
 - The server-side row model is an AG Grid **Enterprise** feature.
+- Cell edits need the what-if plugin, which adds the `/aggrid/edit` route and `pylibs_calc_whatif.edit_to_override`.
 - **Group rows can't be edited** (`422 not_editable`); edit the rows inside the group.
 - **Only editable columns** can be edited. See [Datasets](../concepts/datasets.md).
 - The **advanced filter model** isn't supported yet.

@@ -16,9 +16,6 @@ class Limits:
 
     max_expr_depth: int = 64
     max_expr_nodes: int = 5000
-    max_what_if_steps: int = 500
-    max_scenario_steps: int = 10_000
-    max_edits: int = 200_000
     max_measures: int = 200
     max_group_by: int = 32
     max_page_size: int = 50_000
@@ -33,7 +30,8 @@ class CalcContext:
 
     ``row_filter`` (a formula or expression) is applied to the dataset before anything else, and
     ``allowed_columns`` hides every other non-key column, so neither can be bypassed by a query.
-    ``principal`` is recorded as the author of scenario changes.
+    ``principal`` identifies the caller to authorization hooks and plugins (e.g. as the author
+    of scenario changes).
     """
 
     principal: str | None = None

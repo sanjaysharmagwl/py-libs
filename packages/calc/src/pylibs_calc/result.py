@@ -10,8 +10,8 @@ from typing import Any, Literal
 import polars as pl
 from pydantic import BaseModel, ConfigDict
 
-from pylibs_calc.dtypes import Kind, LType, Scalar
-from pylibs_calc.spec.query import DatasetRef, ScenarioRef
+from pylibs_calc.dtypes import Kind, LType
+from pylibs_calc.spec.query import DatasetRef
 
 _JS_SAFE_INT = 2**53
 
@@ -33,16 +33,15 @@ class ResultMeta(BaseModel):
     """Everything needed to reproduce, audit or cache a result.
 
     ``fingerprint`` is the SHA-256 of the canonical, fully resolved request (dataset version,
-    effective scenario steps, query, result-affecting options and numeric settings). The same
-    fingerprint on the same library versions means the same answer.
+    effective transform steps, query, result-affecting options and numeric settings). The same
+    fingerprint on the same library versions means the same answer. ``extensions`` holds what
+    each plugin transform reports, e.g. ``extensions["whatif"]["unmatched_edits"]``.
     """
 
     model_config = ConfigDict(frozen=True)
 
     fingerprint: str
     dataset: DatasetRef
-    scenario: ScenarioRef | None = None
-    scenario_head: str | None = None
     total_rows: int
     offset: int = 0
     rows: int
@@ -51,7 +50,7 @@ class ResultMeta(BaseModel):
     engine: str
     cached: bool = False
     timings_ms: dict[str, float]
-    unmatched_edits: list[dict[str, Scalar]] = []
+    extensions: dict[str, Any] = {}
     stage_rows: dict[str, int] | None = None
     versions: dict[str, str]
 

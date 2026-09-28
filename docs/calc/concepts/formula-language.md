@@ -47,6 +47,7 @@ for name, (lo, hi) in FUNC_ARITY.items():
 - `min` and `max` compare their arguments across a row. They are not aggregates; for those, use a [measure](../scenarios/measures.md).
 - `coalesce(a, b, …)` returns the first non-null argument.
 - `contains`, `starts_with` and `ends_with` test strings.
+- Plugins can add functions (see [`FunctionDef`](plugins.md#functions-and-aggregates)); they are available in every formula of an engine that has the plugin. A name that neither a built-in nor an installed plugin provides is a `422 unknown_function` when the request is checked.
 
 ## Formulas are stored as trees
 

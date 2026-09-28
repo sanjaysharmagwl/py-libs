@@ -36,15 +36,7 @@ from pylibs_calc.spec.expr import (
 )
 
 from ..compile.compare import ComparePlan
-from ..compile.logical import (
-    LEVEL,
-    HiddenAgg,
-    LogicalMutations,
-    LogicalQuery,
-    OverrideBatch,
-    ShockOp,
-    SortSpec,
-)
+from ..compile.logical import LEVEL, HiddenAgg, LogicalQuery, SortSpec
 from ..compile.query import pivot_label
 from ..compile.validate import Typed
 
@@ -188,6 +180,8 @@ def _binary(t: Typed, node: Binary, row: Mapping[str, Any]) -> Any:
 
 
 def _func(t: Typed, node: Func, row: Mapping[str, Any]) -> Any:
+    if t.impl is not None:
+        return _plugin_func(t, row)
     name = node.name
     args = t.args
     if name in ("min", "max", "coalesce"):
@@ -243,6 +237,22 @@ def _func(t: Typed, node: Func, row: Mapping[str, Any]) -> Any:
     return value.endswith(other)
 
 
+def _plugin_func(t: Typed, row: Mapping[str, Any]) -> Any:
+    values = [convert(evaluate(a, row), a.ltype, a.ltype.rigid()) for a in t.args]
+    if t.impl.nulls == "propagate" and any(v is None for v in values):
+        return None
+    return plugin_value(t.impl.reference(*values), t.ltype)
+
+
+def plugin_value(value: Any, ltype: LType) -> Any:
+    """Coerce a plugin's reference result to its declared type, as the Polars cast does."""
+    if value is None:
+        return None
+    if ltype.kind is Kind.FLOAT:
+        return _finite(float(value))
+    return convert(value, ltype, ltype)
+
+
 def _cast(t: Typed, node: Cast, row: Mapping[str, Any]) -> Any:
     value = evaluate(t.args[0], row)
     if value is None:
@@ -291,43 +301,6 @@ def _cast(t: Typed, node: Cast, row: Mapping[str, Any]) -> Any:
         except ValueError:
             return None
     return value
-
-
-# --- Mutations --------------------------------------------------------------------------------
-
-
-def apply_mutations(rows: Iterable[Mapping[str, Any]], plan: LogicalMutations) -> list[Row]:
-    out = [dict(r) for r in rows]
-    keys = plan.key_columns
-    index = {tuple(r[k] for k in keys): r for r in out} if keys else {}
-    for op in plan.ops:
-        if isinstance(op, OverrideBatch):
-            for column, edits in op.edits.items():
-                for key, value in edits.items():
-                    target = index.get(key)
-                    if target is not None:
-                        target[column] = value
-        else:
-            for r in out:
-                if op.where is None or evaluate(op.where, r) is True:
-                    r[op.column] = shock(r[op.column], op)
-    for f in plan.formulas:
-        for r in out:
-            r[f.name] = convert(evaluate(f.typed, r), f.typed.ltype, f.ltype)
-    return out
-
-
-def shock(value: Any, op: ShockOp) -> Any:
-    if value is None:
-        return None
-    kind = op.ltype.kind
-    if kind is Kind.FLOAT:
-        amount = float(op.amount)
-        return value + amount if op.op == "add" else value * amount
-    exact = Decimal(value) + op.amount if op.op == "add" else Decimal(value) * op.amount
-    if kind is Kind.INT:
-        return int(quantize(exact, 0))
-    return quantize(exact, op.ltype.scale or 0)
 
 
 # --- Queries ----------------------------------------------------------------------------------
@@ -428,6 +401,8 @@ def hidden_agg(h: HiddenAgg, rows: Sequence[Row]) -> Any:
         return len(set(present))
     if not present:
         return None
+    if h.fn == "plugin":
+        return plugin_value(h.impl.reference(present), h.ltype)
     if h.fn == "sum":
         if h.ltype.kind is Kind.FLOAT:
             return math.fsum(present)

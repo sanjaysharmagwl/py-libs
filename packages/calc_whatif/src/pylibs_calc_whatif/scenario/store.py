@@ -12,8 +12,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from pylibs_calc.errors import ScenarioNotFound, VersionConflict
+from pylibs_calc import VersionConflict
 
+from ..errors import ScenarioNotFound
 from .model import LogEntry, Scenario
 
 

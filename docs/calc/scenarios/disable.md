@@ -1,7 +1,7 @@
 ---
 covers:
-  - packages/calc/src/pylibs_calc/spec/scenario.py
-  - packages/calc/src/pylibs_calc/scenario/manager.py
+  - packages/calc_whatif/src/pylibs_calc_whatif/spec.py
+  - packages/calc_whatif/src/pylibs_calc_whatif/scenario/manager.py
 ---
 
 # Disable a step
@@ -9,6 +9,10 @@ covers:
 !!! question "The business question"
     *"The −10% credit shock in our stress scenario is too harsh. Take it out, but keep a record
     that it was there."*
+
+!!! info "What-if plugin"
+    This feature comes from the [what-if plugin](../whatif/index.md) (`pylibs-calc-whatif`). Its
+    steps go in a request's `extensions.whatif` block.
 
 Scenarios are **append-only**, so you never edit or delete a step. A **disable** step undoes an earlier step by its sequence number. The log keeps both, which gives you an audit trail of what was tried.
 

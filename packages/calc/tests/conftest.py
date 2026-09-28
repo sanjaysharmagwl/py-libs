@@ -5,7 +5,7 @@ import polars as pl
 import pytest
 from hypothesis import HealthCheck, settings
 
-from pylibs_calc import CalcEngine, Catalog, InMemoryScenarioStore
+from pylibs_calc import CalcEngine, Catalog
 
 settings.register_profile(
     "default", deadline=None, suppress_health_check=[HealthCheck.too_slow], max_examples=150
@@ -58,4 +58,4 @@ def catalog(frame: pl.DataFrame) -> Catalog:
 
 @pytest.fixture
 def engine(catalog: Catalog) -> CalcEngine:
-    return CalcEngine(catalog, InMemoryScenarioStore())
+    return CalcEngine(catalog)

@@ -74,7 +74,7 @@ async function loadCompare() {
   if (!state.scenario) { table.innerHTML = ""; return; }
   const result = await post("/calc/compare", {
     dataset: DATASET,
-    scenario: state.scenario.id,
+    extensions: { whatif: { scenario: state.scenario.id } },
     query: {
       group_by: ["desk"],
       measures: [{ name: "market_value", fn: "sum", of: "price * quantity" }],
@@ -89,8 +89,8 @@ async function loadCompare() {
 
 const datasource = {
   getRows(params) {
-    const scenario = state.scenario && !state.showBase ? state.scenario.id : null;
-    post("/calc/aggrid/rows", { dataset: DATASET, scenario, request: params.request })
+    const extensions = state.scenario && !state.showBase ? { whatif: { scenario: state.scenario.id } } : {};
+    post("/calc/aggrid/rows", { dataset: DATASET, extensions, request: params.request })
       .then(d => { showError(null); params.success({ rowData: d.rowData, rowCount: d.rowCount, pivotResultFields: d.pivotResultFields ?? undefined }); })
       .catch(e => { showError(e); params.fail(); });
   },

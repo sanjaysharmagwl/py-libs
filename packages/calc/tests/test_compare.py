@@ -1,97 +1,37 @@
-from decimal import Decimal
-
+import polars as pl
 import pytest
 
-from pylibs_calc import CalcEngine, SpecError
+from pylibs_calc import CalcEngine, Catalog, SpecError
 
 
-def test_aggregated_compare(engine: CalcEngine) -> None:
-    scenario = engine.scenarios.create("pos", "tech up")
-    engine.scenarios.append(
-        scenario.id,
-        [
-            {
-                "kind": "shock",
-                "column": "price",
-                "op": "pct",
-                "value": 10,
-                "where": "sector == 'Tech'",
-            }
-        ],
-        expected_version=0,
+def test_compare_two_dataset_versions(catalog: Catalog, frame: pl.DataFrame) -> None:
+    catalog.register_frame(
+        "pos",
+        frame.with_columns(
+            pl.when(pl.col("id") == 2).then(25).otherwise(pl.col("qty")).alias("qty")
+        ),
+        key_columns=["id"],
+        version="v2",
     )
+    engine = CalcEngine(catalog)
     result = engine.compare(
         {
-            "dataset": "pos",
-            "scenario": scenario.id,
+            "dataset": {"id": "pos", "version": "v2"},
+            "base": {"version": "v1"},
             "query": {
                 "group_by": ["sector"],
-                "measures": [{"name": "mv", "fn": "sum", "of": "price * qty"}],
-                "sort": [{"by": "mv__delta", "desc": True}],
-            },
-        }
-    )
-    rows = result.frame.to_dicts()
-    assert list(rows[0]) == ["sector", "mv", "mv__base", "mv__delta", "mv__pct"]
-    tech = rows[0]
-    assert tech["sector"] == "Tech"
-    assert tech["mv__base"] == Decimal("2512.50")
-    assert tech["mv__delta"] == Decimal("251.30")  # 101.25 -> 111.38 (x10), 50.00 -> 55.00 (x30)
-    assert tech["mv__pct"] == pytest.approx(10.0019900497)
-    assert all(r["mv__delta"] == 0 for r in rows[1:])
-
-
-def test_compare_two_what_ifs_with_rollup(engine: CalcEngine) -> None:
-    result = engine.compare(
-        {
-            "dataset": "pos",
-            "what_if": [{"kind": "shock", "column": "qty", "op": "add", "value": 1}],
-            "base_what_if": [{"kind": "shock", "column": "qty", "op": "mul", "value": 2}],
-            "query": {
-                "group_by": ["sector"],
-                "rollup": True,
                 "measures": [{"name": "q", "fn": "sum", "of": "qty"}],
             },
         }
     )
-    total = result.frame.to_dicts()[-1]
-    assert total == {
-        "sector": None,
-        "__level": 0,
-        "q": 216,
-        "q__base": 420,
-        "q__delta": -204,
-        "q__pct": pytest.approx(-48.5714285714),
-    }
+    rows = {r["sector"]: r for r in result.frame.to_dicts()}
+    assert rows["Fin"]["q"] == 85 and rows["Fin"]["q__base"] == 80 and rows["Fin"]["q__delta"] == 5
+    assert rows["Tech"]["q__delta"] == 0
 
 
-def test_row_level_compare_and_zero_base(engine: CalcEngine) -> None:
-    result = engine.compare(
-        {
-            "dataset": "pos",
-            "what_if": [
-                {"kind": "override", "edits": [{"key": {"id": 2}, "column": "qty", "value": 25}]}
-            ],
-            "base_what_if": [
-                {"kind": "override", "edits": [{"key": {"id": 3}, "column": "qty", "value": 0}]}
-            ],
-            "query": {
-                "select": ["id", "qty"],
-                "sort": [{"by": "qty__delta", "desc": True}],
-                "page": {"limit": 2},
-            },
-        }
-    )
-    assert result.meta.total_rows == 6
-    rows = result.frame.to_dicts()
-    assert rows[0] == {
-        "id": 3,
-        "qty": 30,
-        "qty__base": 0,
-        "qty__delta": 30,
-        "qty__pct": None,  # a zero base has no percentage change
-    }
-    assert rows[1]["id"] == 2 and rows[1]["qty__delta"] == 5
+def test_compare_with_itself_has_no_deltas(engine: CalcEngine) -> None:
+    result = engine.compare({"dataset": "pos", "query": {"select": ["id", "qty"]}})
+    assert result.frame["qty__delta"].to_list() == [0] * 6
 
 
 def test_compare_rejects_pivot(engine: CalcEngine) -> None:
@@ -105,3 +45,9 @@ def test_compare_rejects_pivot(engine: CalcEngine) -> None:
                 },
             }
         )
+
+
+def test_unknown_extensions_are_rejected(engine: CalcEngine) -> None:
+    with pytest.raises(SpecError) as info:
+        engine.compare({"dataset": "pos", "base": {"extensions": {"nope": {}}}})
+    assert info.value.code == "unknown_extension" and info.value.path == "/base/extensions/nope"

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
 
 from pylibs_calc.dtypes import (
     BOOL,
@@ -26,6 +27,7 @@ from pylibs_calc.dtypes import (
 )
 from pylibs_calc.errors import SpecError, join_path
 from pylibs_calc.spec.expr import (
+    FUNC_ARITY,
     Binary,
     Cast,
     ColRef,
@@ -39,6 +41,9 @@ from pylibs_calc.spec.expr import (
     Node,
     Unary,
 )
+
+if TYPE_CHECKING:
+    from pylibs_calc.plugins import FunctionDef
 
 _LIT_TYPES: dict[str, LType] = {
     "null": NULL,
@@ -59,6 +64,7 @@ class Typed:
     ltype: LType
     args: tuple[Typed, ...] = ()
     operand: LType | None = None
+    impl: Any = None  # the plugin FunctionDef of a plugin function call
 
 
 @dataclass
@@ -82,10 +88,15 @@ def check(
     cfg: NumericConfig,
     path: str = "",
     budget: Budget | None = None,
+    *,
+    functions: Mapping[str, FunctionDef] | None = None,
 ) -> Typed:
-    """Type-check ``node`` against the columns in ``env`` or raise :class:`SpecError`."""
+    """Type-check ``node`` against the columns in ``env`` or raise :class:`SpecError`.
+
+    ``functions`` are plugin functions (see :class:`~pylibs_calc.plugins.Registry`).
+    """
     budget = budget or Budget()
-    return _Checker(env, cfg, budget).check(node, path, 1)
+    return _Checker(env, cfg, budget, functions or {}).check(node, path, 1)
 
 
 def check_predicate(
@@ -94,8 +105,10 @@ def check_predicate(
     cfg: NumericConfig,
     path: str = "",
     budget: Budget | None = None,
+    *,
+    functions: Mapping[str, FunctionDef] | None = None,
 ) -> Typed:
-    typed = check(node, env, cfg, path, budget)
+    typed = check(node, env, cfg, path, budget, functions=functions)
     if typed.ltype.kind not in (Kind.BOOL, Kind.NULL):
         raise SpecError(
             f"expected a true/false condition, got {typed.ltype}", code="type_mismatch", path=path
@@ -104,10 +117,17 @@ def check_predicate(
 
 
 class _Checker:
-    def __init__(self, env: Mapping[str, LType], cfg: NumericConfig, budget: Budget) -> None:
+    def __init__(
+        self,
+        env: Mapping[str, LType],
+        cfg: NumericConfig,
+        budget: Budget,
+        functions: Mapping[str, FunctionDef],
+    ) -> None:
         self.env = env
         self.cfg = cfg
         self.budget = budget
+        self.functions = functions
 
     def check(self, node: Node, path: str, level: int) -> Typed:
         self.budget.nodes += 1
@@ -200,6 +220,8 @@ class _Checker:
 
     def _func(self, node: Func, args: tuple[Typed, ...]) -> Typed:
         name = node.name
+        if name not in FUNC_ARITY:
+            return self._plugin_func(node, args)
         first = args[0].ltype
         if name == "abs":
             _need_numeric(first, name)
@@ -240,6 +262,25 @@ class _Checker:
         for arg in args:
             _need_kind(arg.ltype, Kind.STR, name)
         return Typed(node, BOOL, args)
+
+    def _plugin_func(self, node: Func, args: tuple[Typed, ...]) -> Typed:
+        fdef = self.functions.get(node.name)
+        if fdef is None:
+            raise SpecError(
+                f"unknown function: {node.name}",
+                code="unknown_function",
+                detail={"function": node.name, "available": sorted([*FUNC_ARITY, *self.functions])},
+            )
+        n = len(args)
+        if n < fdef.min_args or (fdef.max_args is not None and n > fdef.max_args):
+            raise _mismatch(f"{node.name}() takes {fdef.arity_text()} arguments, got {n}")
+        try:
+            result = fdef.typecheck([a.ltype for a in args])
+        except (TypeError, ValueError) as exc:
+            raise _mismatch(f"{node.name}(): {exc}") from None
+        if result.kind in (Kind.NULL, Kind.OTHER):
+            raise _mismatch(f"{node.name}() must return a concrete type, not {result}")
+        return Typed(node, result.rigid(), args, impl=fdef)
 
     def _cast(self, node: Cast, arg: Typed) -> Typed:
         source = arg.ltype.kind
