@@ -1,6 +1,11 @@
 # Glossary
 
+Short definitions. New to finance? The [Finance primer](getting-started/finance-primer.md) explains these terms with worked examples.
+
 Finance terms
+:   **Position**: one row of the book: a quantity of one instrument held by one desk.
+:   **Book**: the full set of positions.
+:   **Desk**: the trading team that owns a position (Rates, Credit, Equities, FX, Commodities).
 :   **Notional**: the size of a position in money, here `price × quantity`.
 :   **Mark**: the current price used to value a position. A trader who "corrects a mark" makes an [override](scenarios/override.md).
 :   **Long / short**: a positive / negative quantity.

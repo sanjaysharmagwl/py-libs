@@ -12,6 +12,14 @@ It is a Python **library** built on [Polars](https://pola.rs). You embed it in y
 
 <div class="grid cards" markdown>
 
+-   :material-book-open-variant: **New to finance?**
+
+    ---
+
+    Positions, desks, notional, shocks, basis points and P&L impact, explained from scratch.
+
+    [:octicons-arrow-right-24: Finance primer](getting-started/finance-primer.md)
+
 -   :material-rocket-launch-outline: **New here?**
 
     ---

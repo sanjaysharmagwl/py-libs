@@ -8,6 +8,9 @@ covers:
 
 This page takes five minutes. You will register a dataset, run a query, try a what-if with the what-if plugin, and read the result's metadata.
 
+!!! tip "New to positions, desks and shocks?"
+    Read the [Finance primer](finance-primer.md) first. It explains every finance term these examples use.
+
 ## 1. Register data and create an engine
 
 ```python
