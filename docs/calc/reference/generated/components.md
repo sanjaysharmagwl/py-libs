@@ -2,7 +2,7 @@
 
 # Components
 
-A map of `pylibs-calc` and its plugin packages (`plugin_*`, e.g. `pylibs-calc-whatif`), generated from the code knowledge graph (graphify), built at commit `1fd42018150c`. It lists every module with its public classes and functions, what each part imports and which components the rest of the code relies on most. For how the parts work together, read [Architecture](../../concepts/architecture.md).
+A map of `pylibs-calc` and its plugin packages (`plugin_*`, e.g. `pylibs-calc-whatif`), generated from the code knowledge graph (graphify), built at commit `598d183265e2`. It lists every module with its public classes and functions, what each part imports and which components the rest of the code relies on most. For how the parts work together, read [Architecture](../../concepts/architecture.md).
 
 ## How the parts depend on each other
 
@@ -73,15 +73,15 @@ Ranked by how many other source files (tests included) call, reference or subcla
 
 | Component | Kind | Module | Used from files |
 | --- | --- | --- | --- |
-| [`CalcEngine`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/engine.py#L534) | class | `pylibs_calc.engine` | 24 |
-| [`SpecError`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L44) | class | `pylibs_calc.errors` | 19 |
-| [`CalcContext`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/config.py#L28) | class | `pylibs_calc.config` | 18 |
-| [`LType`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/dtypes.py#L68) | class | `pylibs_calc.dtypes` | 16 |
-| [`Catalog`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/catalog.py#L69) | class | `pylibs_calc.catalog` | 15 |
-| [`Limits`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/config.py#L14) | class | `pylibs_calc.config` | 11 |
-| [`InMemoryScenarioStore`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/store.py#L61) | class | `pylibs_calc_whatif.scenario.store` | 9 |
-| [`Kind`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/dtypes.py#L37) | class | `pylibs_calc.dtypes` | 9 |
+| [`CalcEngine`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/engine.py#L534) | class | `pylibs_calc.engine` | 25 |
+| [`SpecError`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L44) | class | `pylibs_calc.errors` | 21 |
+| [`CalcContext`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/config.py#L28) | class | `pylibs_calc.config` | 19 |
+| [`Limits`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/config.py#L14) | class | `pylibs_calc.config` | 12 |
+| [`InMemoryScenarioStore`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/scenario/store.py#L61) | class | `pylibs_calc_whatif.scenario.store` | 10 |
+| [`CalcError`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L8) | class | `pylibs_calc.errors` | 9 |
+| [`WhatIfPlugin`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc_whatif/src/pylibs_calc_whatif/plugin.py#L46) | class | `pylibs_calc_whatif.plugin` | 9 |
 | [`Binary`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L128) | class | `pylibs_calc.spec.expr` | 8 |
+| [`CalcResult`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/result.py#L58) | class | `pylibs_calc.result` | 8 |
 | [`ColRef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/expr.py#L65) | class | `pylibs_calc.spec.expr` | 8 |
 | [`DatasetRef`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/spec/query.py#L152) | class | `pylibs_calc.spec.query` | 8 |
 | [`LimitExceeded`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/src/pylibs_calc/errors.py#L79) | class | `pylibs_calc.errors` | 8 |

@@ -194,9 +194,13 @@ from book import engine, table
 result = engine().compare(
     {
         "dataset": "positions",
-        "what_if": [
-            {"kind": "shock", "column": "price", "op": "pct", "value": -10, "where": "desk == 'Equities'"}
-        ],
+        "extensions": {
+            "whatif": {
+                "steps": [
+                    {"kind": "shock", "column": "price", "op": "pct", "value": -10, "where": "desk == 'Equities'"}
+                ]
+            }
+        },
         "query": {
             "filter": "desk == 'Equities'",
             "group_by": ["instrument"],
@@ -250,8 +254,8 @@ People are usually only allowed to see some of the book, for example just their 
 | Totals and subtotals | subtotals | `"rollup": true` |
 | Desk × region matrix | pivot | `"pivot": {"on": ["region"]}` |
 | Desks over a limit | limit breach | `"having": "gross > 400000"` |
-| Fix one price | correct a mark | a `what_if` step with `"kind": "override"` |
-| Move a whole column | shock | a `what_if` step with `"kind": "shock"` |
+| Fix one price | correct a mark | a [what-if](../whatif/index.md) step with `"kind": "override"` |
+| Move a whole column | shock | a [what-if](../whatif/index.md) step with `"kind": "shock"` |
 | +25bp on yields | basis points | `{"kind": "shock", "column": "yield", "op": "add", "value": "0.0025"}` |
 | Before vs after | P&L impact | `engine.compare(...)` or `POST /calc/compare` → `__delta` columns |
 | Keep a what-if | scenario | [Saved scenarios](../scenarios/saved-scenarios.md) |

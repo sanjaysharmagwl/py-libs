@@ -2,7 +2,7 @@
 
 # Docs freshness
 
-Checked against the code graph at commit `1fd42018150c`.
+Checked against the code graph at commit `598d183265e2`.
 
 Each hand-written page lists the source files it explains in its front matter (`covers:`). A page shows up here when the public surface of one of those files has changed since someone last reviewed the page: classes or functions added or removed, docstrings edited, or different calls to other modules. After checking the page, run `uv run python scripts/docs_from_graph.py --ack docs/<page>` and commit the result.
 
