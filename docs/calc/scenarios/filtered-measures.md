@@ -7,7 +7,8 @@ covers:
 # Filtered measures
 
 !!! question "The business question"
-    *"Per desk, how much of my notional is long, how much is short, and what is the net?"*
+    *"In each region, how much of the fund is in equities, how much in bonds and how much in
+    cash?"*
 
 Any measure can take a `where`, which narrows the rows **that measure** sees without changing which groups exist. It works like SQL's `SUM(x) FILTER (WHERE ...)`, and it saves you from running three queries and joining them.
 
@@ -35,9 +36,9 @@ Any measure can take a `where`, which narrows the rows **that measure** sees wit
 
 ## What to notice
 
-- **Commodities** has no short positions, so `short` is **null** there (a sum over no rows), not 0.
-- `long + short = net` on every row where both exist. The groups are the same for all three measures.
-- A query-level `filter` would have removed rows for **every** measure. A measure's `where` removes them for that measure only.
+- The fund holds no bonds in **Japan** (it is underweight the JGB), so `bonds` is **null** there (a sum over no rows), not 0. Only North America has cash.
+- `equity + bonds + cash = fund` on every row, counting a null as nothing. The groups are the same for all four measures.
+- A query-level `filter` would have removed rows for **every** measure. A measure's `where` removes them for that measure only. The same trick puts the fund and its benchmark side by side; see [Weights and active weights](weights.md).
 
 ## Gotchas
 

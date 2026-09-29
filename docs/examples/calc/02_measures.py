@@ -1,27 +1,23 @@
-"""Measures: exposure, counts and weighted yield per desk."""
+"""Measures: value, counts, simple and value-weighted yield, and longest duration."""
 
 from book import engine, table
 
 REQUEST = {
-    "dataset": "positions",
+    "dataset": "holdings",
     "query": {
-        "derive": [{"name": "notional", "expr": "price * quantity"}],
-        "group_by": ["desk"],
+        "filter": "quantity > 0",
+        "derive": [{"name": "mv", "expr": "round(price * quantity * fx_rate, 2)"}],
+        "group_by": ["asset_class"],
         "measures": [
-            {"name": "notional", "fn": "sum", "of": "notional"},
-            {"name": "avg_price", "fn": "mean", "of": "price"},
-            {"name": "max_price", "fn": "max", "of": "price"},
-            {"name": "positions", "fn": "count_rows"},
+            {"name": "mv", "fn": "sum", "of": "mv"},
+            {"name": "holdings", "fn": "count_rows"},
             {"name": "with_yield", "fn": "count", "of": "yield"},
-            {"name": "sectors", "fn": "count_distinct", "of": "sector"},
-            {
-                "name": "wavg_yield",
-                "fn": "wavg",
-                "of": "yield",
-                "weight": "abs(float(notional))",
-            },
+            {"name": "countries", "fn": "count_distinct", "of": "country"},
+            {"name": "avg_yield", "fn": "mean", "of": "yield"},
+            {"name": "wavg_yield", "fn": "wavg", "of": "yield", "weight": "float(mv)"},
+            {"name": "max_duration", "fn": "max", "of": "duration"},
         ],
-        "sort": [{"by": "desk"}],
+        "sort": [{"by": "asset_class"}],
     },
 }
 

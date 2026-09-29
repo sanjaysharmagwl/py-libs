@@ -27,7 +27,7 @@ const gridOptions = {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-          dataset: 'positions',
+          dataset: 'holdings',
           extensions: scenario ? {whatif: {scenario: scenario.id}} : {},   // any plugin transforms
           request: p.request,
         }),
@@ -61,7 +61,7 @@ adapter = AgGridAdapter(
     in_range_inclusive=False,  # must match the grid's inRange filter option
     custom_aggs={  # extra aggFunc names the grid can offer
         "wavg_yield": lambda c: Measure(
-            name=c, fn="wavg", of=c, weight="abs(float(price * quantity))"
+            name=c, fn="wavg", of=c, weight="float(price * quantity * fx_rate)"
         ),
     },
 )

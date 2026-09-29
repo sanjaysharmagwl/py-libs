@@ -7,7 +7,8 @@ covers:
 # Having
 
 !!! question "The business question"
-    *"Which desks have a gross exposure over their limit of 400,000?"*
+    *"Which holdings are above our 10% concentration limit? And which sectors are more than 5
+    points away from the benchmark?"*
 
 `having` filters **groups** after aggregation, using the measures and `post` values, as SQL's `HAVING` does.
 
@@ -25,6 +26,7 @@ covers:
     from book import curl
 
     print(curl("05_having.py"))
+    print(curl("05_having.py", name="ACTIVE_REQUEST"))
     ```
 
 ## Result
@@ -35,8 +37,11 @@ covers:
 
 ## What to notice
 
-- The derived column `gross` and the measure `gross` have the same name. In `having`, `gross` means **the measure**.
-- The sort puts the biggest breach first.
+- The first table is a **concentration check**. Rules such as "no single holding above 10% of the fund" are common in fund regulation and in investment guidelines. Two holdings breach it here.
+- The second table is an **active-weight check**: the sectors where the fund is more than 5 points over- or underweight its benchmark. Information Technology is 15 points underweight.
+- `having` can use `post` values such as `weight_pct`, and `total()` directly: `"having": "mv > total(mv) / 10"` is the same concentration check.
+- **The denominator doesn't shrink.** `total()` is computed before `having` removes groups, so a weight is always a share of the whole fund, not of the groups that pass.
+- The derived column `mv` and the measure `mv` have the same name. In `having`, `mv` means **the measure**.
 
 ## Gotchas
 

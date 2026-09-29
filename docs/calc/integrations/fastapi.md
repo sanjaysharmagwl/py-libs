@@ -18,7 +18,7 @@ from pylibs_calc.integrations.fastapi import create_router
 from pylibs_calc_whatif import InMemoryScenarioStore, WhatIfPlugin
 
 catalog = Catalog()
-catalog.register_frame("positions", load_positions(), key_columns=["position_id"])
+catalog.register_frame("holdings", load_holdings(), key_columns=["security_id"])
 engine = CalcEngine(catalog, plugins=[WhatIfPlugin(store=InMemoryScenarioStore())])
 
 app = FastAPI()
@@ -29,7 +29,7 @@ app.include_router(
         dependencies=[Depends(authenticate)],  # your auth runs first
         context_resolver=lambda req: CalcContext(  # then maps the user to entitlements
             principal=req.state.user,
-            row_filter=f"desk in {tuple(req.state.desks)!r}",
+            row_filter=f"analyst in {tuple(req.state.coverage)!r}",
             allowed_columns=frozenset(req.state.columns),
         ),
     )

@@ -3,7 +3,8 @@
 What-if analysis for [`pylibs-calc`](../calc), as a plugin. It adds:
 
 - **Steps** that change values but keep every row: overrides of individual cells, bulk shocks
-  ("price +5% where sector is Tech") and formula columns that follow later changes.
+  ("price −10% where sector is Information Technology", "the dollar +5%") and formula columns that
+  follow later changes.
 - **Saved scenarios:** append-only, hash-chained logs of steps over a pinned dataset version,
   with optimistic locking, idempotent retries, forks and disables, in memory or in Redis.
 - **Routes** for the core FastAPI router (`/scenarios/...`), and AG Grid cell edits saved as
@@ -25,7 +26,7 @@ engine = CalcEngine(catalog, plugins=[WhatIfPlugin(store=InMemoryScenarioStore()
 
 result = engine.run(
     {
-        "dataset": "positions",
+        "dataset": "holdings",
         "extensions": {
             "whatif": {
                 "steps": [
@@ -33,16 +34,17 @@ result = engine.run(
                         "kind": "shock",
                         "column": "price",
                         "op": "pct",
-                        "value": 5,
-                        "where": "sector == 'Tech'",
+                        "value": -10,
+                        "where": "sector == 'Information Technology'",
                     },
-                    {"kind": "formula", "name": "notional", "expr": "price * quantity"},
+                    {"kind": "formula", "name": "mv", "expr": "price * quantity * fx_rate"},
                 ]
             }
         },
         "query": {
-            "group_by": ["desk"],
-            "measures": [{"name": "notional", "fn": "sum", "of": "notional"}],
+            "group_by": ["sector"],
+            "measures": [{"name": "mv", "fn": "sum", "of": "mv"}],
+            "post": [{"name": "weight", "expr": "mv / total(mv)"}],
         },
     }
 )
@@ -58,9 +60,9 @@ level) are upgraded automatically, with the same results and fingerprints.
 
 | Step | What it does |
 | --- | --- |
-| `override` | Sets cells by key (`{"key": {"position_id": 7}, "column": "price", "value": "101.5"}`). |
+| `override` | Sets cells by key (`{"key": {"security_id": 7}, "column": "price", "value": "101.5"}`). |
 | `shock` | `add`, `mul` or `pct` on a numeric column, optionally `where` a condition holds. |
-| `formula` | A derived column. It is recomputed after all value changes, so a later override of `price` still flows into `notional = price * quantity`. |
+| `formula` | A derived column. It is recomputed after all value changes, so a later override of `price` still flows into `mv = price * quantity * fx_rate`. |
 | `disable` | Undoes an earlier step by its sequence number. |
 
 - Value changes apply in order: the saved scenario's, then the request's own. Formulas are
@@ -74,11 +76,11 @@ level) are upgraded automatically, with the same results and fingerprints.
 
 ```python
 scenarios = engine.plugin(WhatIfPlugin).scenarios
-s = scenarios.create("positions", "tech rally", ctx=CalcContext(principal="ana"))
+s = scenarios.create("holdings", "AI rally", ctx=CalcContext(principal="ana"))
 s = scenarios.append(s.id, [shock_step], expected_version=0, client_op_id="uuid-1")
-engine.run({"dataset": "positions", "extensions": {"whatif": {"scenario": s.id}}})
-engine.run({"dataset": "positions", "extensions": {"whatif": {"scenario": {"id": s.id, "version": 0}}}})
-fork = scenarios.fork(s.id, name="what if we hedge")  # copy, then diverge
+engine.run({"dataset": "holdings", "extensions": {"whatif": {"scenario": s.id}}})
+engine.run({"dataset": "holdings", "extensions": {"whatif": {"scenario": {"id": s.id, "version": 0}}}})
+fork = scenarios.fork(s.id, name="AI rally, buy Initech")  # copy, then diverge
 scenarios.verify(s.id)  # hash chain intact?
 ```
 

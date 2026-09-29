@@ -38,6 +38,7 @@ HINTS = {
     "invalid_disable": "A disable of a later step, or of another disable",
     "invalid_key": "A key column that is missing from the dataset, or has an unusable type",
     "invalid_measure": "A measure that reads no column",
+    "invalid_total": "`total()` outside `post`/`having`, or on something that isn't a measure name",
     "invalid_sort": "A sort the view can't do, e.g. a rollup sorted by a measure",
     "invalid_value": "A literal, edit or shock value that doesn't fit its type",
     "name_conflict": "A reserved `__` name, or a formula named like a dataset column",

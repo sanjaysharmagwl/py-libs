@@ -1,12 +1,12 @@
 # Call the API with curl
 
-This page is for **QA and business users** who want to try calculations without writing Python. Start the [demo service](run-the-demo.md), then paste these commands into a terminal. Each request is plain JSON.
+This page is for **QA, portfolio managers and analysts** who want to try calculations without writing Python. Start the [demo service](run-the-demo.md), then paste these commands into a terminal. Each request is plain JSON.
 
 ## Discover the data
 
 ```bash
 curl -s localhost:8000/calc/datasets
-curl -s localhost:8000/calc/datasets/positions/schema
+curl -s localhost:8000/calc/datasets/holdings/schema
 ```
 
 The schema lists every column with its type, its role (`key`, `dimension` or `measure`) and whether it can be edited.
@@ -15,17 +15,21 @@ The schema lists every column with its type, its role (`key`, `dimension` or `me
 
 ```bash
 curl -s localhost:8000/calc/query -H 'Content-Type: application/json' -d '{
-  "dataset": "positions",
+  "dataset": "holdings",
   "query": {
-    "group_by": ["desk"],
+    "filter": "quantity > 0",
+    "group_by": ["sector"],
     "measures": [
-      {"name": "mv", "fn": "sum", "of": "price * quantity"},
-      {"name": "positions", "fn": "count_rows"}
+      {"name": "mv", "fn": "sum", "of": "price * quantity * fx_rate"},
+      {"name": "holdings", "fn": "count_rows"}
     ],
+    "post": [{"name": "weight", "expr": "mv / total(mv)"}],
     "sort": [{"by": "mv", "desc": true}]
   }
 }'
 ```
+
+That is the fund's market value in USD, number of holdings and weight in each sector.
 
 The response is `{"rows": [...], "meta": {...}}`. `meta.fingerprint` (also sent as the `X-Calc-Fingerprint` header) identifies the calculation exactly, so note it in a bug report.
 
@@ -33,15 +37,20 @@ The response is `{"rows": [...], "meta": {...}}`. `meta.fingerprint` (also sent 
 
 ```bash
 curl -s localhost:8000/calc/compare -H 'Content-Type: application/json' -d '{
-  "dataset": "positions",
+  "dataset": "holdings",
   "extensions": {"whatif": {"steps": [{"kind": "shock", "column": "price", "op": "pct", "value": -5, "where": "sector == '"'"'Energy'"'"'"}]}},
   "query": {
     "group_by": ["sector"],
-    "measures": [{"name": "mv", "fn": "sum", "of": "price * quantity"}],
-    "sort": [{"by": "mv__delta"}]
+    "measures": [
+      {"name": "fund", "fn": "sum", "of": "price * quantity * fx_rate"},
+      {"name": "bench", "fn": "sum", "of": "price * bench_quantity * fx_rate"}
+    ],
+    "sort": [{"by": "fund__delta"}]
   }
 }'
 ```
+
+Energy falls 5%; the result shows the fund's and the benchmark's value in each sector, before and after.
 
 !!! tip "Quotes inside JSON inside a shell"
     Formulas use single quotes for strings (`sector == 'Energy'`). That clashes with a shell's single-quoted `-d '...'`. The easiest fix is a *heredoc*: write `-d @- <<'JSON'`, paste the JSON on the lines below it, and end with a line containing only `JSON`. The **JSON (curl)** tabs on the scenario pages use that form.
@@ -50,8 +59,8 @@ curl -s localhost:8000/calc/compare -H 'Content-Type: application/json' -d '{
 
 ```bash
 curl -s localhost:8000/calc/explain -H 'Content-Type: application/json' -d '{
-  "dataset": "positions",
-  "query": {"derive": [{"name": "notional", "expr": "price * quantity"}], "page": {"limit": 1}}
+  "dataset": "holdings",
+  "query": {"derive": [{"name": "mv", "expr": "price * quantity * fx_rate"}], "page": {"limit": 1}}
 }'
 ```
 
@@ -65,7 +74,7 @@ curl -s localhost:8000/calc/explain -H 'Content-Type: application/json' -d '{
 Errors come back with an HTTP status and a body such as:
 
 ```json
-{"detail": {"code": "unknown_column", "message": "unknown column: notionl", "path": "/query/measures/0/of"}}
+{"detail": {"code": "unknown_column", "message": "unknown column: qty", "path": "/query/measures/0/of"}}
 ```
 
 `path` points at the part of your request to fix. Every code is listed in [Error codes](../reference/error-codes.md).

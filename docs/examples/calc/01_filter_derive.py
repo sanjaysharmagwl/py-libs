@@ -1,17 +1,21 @@
-"""Filter + derive: the EMEA positions and their notional."""
+"""Filter + derive: the fund's non-USD holdings, in USD, with the analyst's upside to target."""
 
 from book import engine, table
 
 REQUEST = {
-    "dataset": "positions",
+    "dataset": "holdings",
     "query": {
-        "filter": "region == 'EMEA' and quantity != 0",
+        "filter": "currency != 'USD' and quantity > 0",
         "derive": [
-            {"name": "notional", "expr": "price * quantity"},
-            {"name": "side", "expr": "'long' if quantity > 0 else 'short'"},
+            {"name": "mv_usd", "expr": "round(price * quantity * fx_rate, 2)"},
+            {
+                "name": "upside_pct",
+                "expr": "round(100 * (target_price / price - 1), 1)",
+                "where": "target_price is not None",
+            },
         ],
-        "select": ["position_id", "desk", "price", "quantity", "notional", "side"],
-        "sort": [{"by": "position_id"}],
+        "select": ["security", "currency", "price", "quantity", "mv_usd", "upside_pct"],
+        "sort": [{"by": "mv_usd", "desc": True}],
     },
 }
 

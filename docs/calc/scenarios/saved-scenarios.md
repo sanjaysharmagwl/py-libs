@@ -8,8 +8,8 @@ covers:
 # Saved scenarios and forks
 
 !!! question "The business question"
-    *"Save a 'Tech rally' scenario that my team can reopen. Then branch it to try a hedge,
-    without touching the original."*
+    *"Save an 'AI rally' scenario that my team can reopen. Then branch it to see what buying
+    Initech would do to our tech underweight, without touching the original."*
 
 !!! info "What-if plugin"
     This feature comes from the [what-if plugin](../whatif/index.md) (`pylibs-calc-whatif`). Its
@@ -34,7 +34,8 @@ A **saved scenario** is a named, append-only log of steps ([overrides](override.
 - **`version` is the length of the log.** `(scenario id, version)` always names exactly the same content, so you can re-run a report "as of version 3" at any time.
 - **Optimistic locking.** An append must say which version it expects (`expected_version`). If someone else appended in the meantime, you get `409 version_conflict`: reload and retry. Nobody's work is overwritten silently.
 - **Safe retries.** A retry with the same `client_op_id` (the `Idempotency-Key` header over HTTP) returns the stored result instead of appending twice.
-- **Forks are independent.** The hedged fork copies the effective steps and then diverges; the original is unchanged.
+- **Weights move with the scenario.** The rally lifts the fund's tech weight a little, from 15.69% to 16.33%. Buying 10,000 Initech in the fork takes it to 21.92%, closing part of the underweight.
+- **Forks are independent.** The fork copies the effective steps and then diverges; the original is unchanged.
 - **Tamper-evident.** Each log entry is hashed together with the previous one. `verify()` recomputes the chain, and any edit to the stored log shows up.
 
 `engine.plugin(WhatIfPlugin).scenarios` is the `ScenarioManager`: `create`, `append`, `fork`, `get`, `log`, `list`, `delete` and `verify`. `log()` returns `LogEntry` records (sequence number, step, author, time, note and hash).
@@ -44,16 +45,16 @@ A **saved scenario** is a named, append-only log of steps ([overrides](override.
 ```bash
 # create
 curl -s localhost:8000/calc/scenarios -H 'Content-Type: application/json' \
-  -d '{"dataset": "positions", "name": "tech rally"}'
+  -d '{"dataset": "holdings", "name": "AI rally"}'
 # append (use the id from the response)
 curl -s localhost:8000/calc/scenarios/$ID/steps -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: op-1' \
-  -d '{"expected_version": 0, "steps": [{"kind": "shock", "column": "price", "op": "pct", "value": 8, "where": "sector == '\''Tech'\''"}]}'
-# query it
+  -d '{"expected_version": 0, "steps": [{"kind": "shock", "column": "price", "op": "pct", "value": 8, "where": "sector == '\''Information Technology'\''"}]}'
+# query it: weight by sector
 curl -s localhost:8000/calc/query -H 'Content-Type: application/json' \
-  -d '{"dataset": "positions", "extensions": {"whatif": {"scenario": "'$ID'"}}, "query": {"group_by": ["sector"], "measures": [{"name": "mv", "fn": "sum", "of": "price * quantity"}]}}'
+  -d '{"dataset": "holdings", "extensions": {"whatif": {"scenario": "'$ID'"}}, "query": {"group_by": ["sector"], "measures": [{"name": "mv", "fn": "sum", "of": "price * quantity * fx_rate"}], "post": [{"name": "weight", "expr": "mv / total(mv)"}]}}'
 # fork, read the log, check the hash chain
-curl -s localhost:8000/calc/scenarios/$ID/fork -H 'Content-Type: application/json' -d '{"name": "hedged"}'
+curl -s localhost:8000/calc/scenarios/$ID/fork -H 'Content-Type: application/json' -d '{"name": "AI rally, buy Initech"}'
 curl -s localhost:8000/calc/scenarios/$ID/log
 curl -s localhost:8000/calc/scenarios/$ID/verify
 ```

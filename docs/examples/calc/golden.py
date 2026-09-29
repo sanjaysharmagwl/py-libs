@@ -1,4 +1,4 @@
-"""Golden cases: requests over the example book with their expected results.
+"""Golden cases: requests over the example fund with their expected results.
 
 Each case pins one rule that is easy to get wrong (nulls, rounding, ratios of sums, ...). QA can
 run them against a build, and they run in ``make test``:
@@ -18,73 +18,72 @@ from book import engine
 
 CASES_FILE = Path(__file__).resolve().parent / "golden_cases.json"
 
+MV = "price * quantity * fx_rate"  # market value in USD
+
 CASES: list[dict[str, Any]] = [
     {
         "id": "sum-of-nothing-is-null",
         "title": "A sum over no rows is null, not 0",
-        "why": "Commodities has no short positions, so its short notional is null (SQL semantics).",
+        "why": "The fund holds no bonds in Japan (only bonds have a yield), so the Japan bond "
+        "value is null (SQL semantics).",
         "kind": "run",
         "request": {
-            "dataset": "positions",
+            "dataset": "holdings",
             "query": {
-                "group_by": ["desk"],
+                "filter": "quantity > 0",
+                "group_by": ["region"],
                 "measures": [
-                    {
-                        "name": "short",
-                        "fn": "sum",
-                        "of": "price * quantity",
-                        "where": "quantity < 0",
-                    }
+                    {"name": "bonds", "fn": "sum", "of": MV, "where": "yield is not None"}
                 ],
-                "sort": [{"by": "desk"}],
+                "sort": [{"by": "region"}],
             },
         },
     },
     {
         "id": "null-condition-is-false",
         "title": "A null condition drops the row",
-        "why": "yield is null for equities, so `yield > 0` is null for them and they are "
-        "filtered out.",
+        "why": "yield is null for equities and cash, so `yield > 0` is null for them and they are "
+        "filtered out; the six bonds remain.",
         "kind": "run",
         "request": {
-            "dataset": "positions",
+            "dataset": "holdings",
             "query": {"filter": "yield > 0", "measures": [{"name": "n", "fn": "count_rows"}]},
         },
     },
     {
         "id": "three-valued-or",
         "title": "`null or true` is true",
-        "why": "Equities have a null yield, but `or desk == 'Equities'` makes the condition true.",
+        "why": "Cash has a null yield, but `or asset_class == 'Cash'` makes the condition true.",
         "kind": "run",
         "request": {
-            "dataset": "positions",
+            "dataset": "holdings",
             "query": {
-                "filter": "yield > 0.05 or desk == 'Equities'",
-                "select": ["position_id", "desk"],
-                "sort": [{"by": "position_id"}],
+                "filter": "yield > 0.05 or asset_class == 'Cash'",
+                "select": ["security_id", "security"],
+                "sort": [{"by": "security_id"}],
             },
         },
     },
     {
         "id": "half-even-shock",
         "title": "Shocked decimals round half-to-even",
-        "why": "102.10 × 1.05 = 107.205, which rounds to 107.20 (even), not 107.21.",
+        "why": "98.50 × 1.05 = 103.425, which rounds to 103.42 (even), not 103.43.",
         "kind": "run",
         "request": {
-            "dataset": "positions",
+            "dataset": "holdings",
             "extensions": {
                 "whatif": {"steps": [{"kind": "shock", "column": "price", "op": "pct", "value": 5}]}
             },
-            "query": {"filter": "position_id == 6", "select": ["position_id", "price"]},
+            "query": {"filter": "security_id == 1", "select": ["security_id", "price"]},
         },
     },
     {
         "id": "integer-shock-round",
         "title": "Integer shocks need `round`, then round half-to-even",
-        "why": "−500 × 1.033 = −516.5, which rounds to −516.",
+        "why": "2,500 shares × 1.033 = 2,582.5, which rounds to 2,582.",
         "kind": "run",
         "request": {
-            "dataset": "positions",
+            "dataset": "holdings",
             "extensions": {
                 "whatif": {
                     "steps": [
@@ -98,45 +97,58 @@ CASES: list[dict[str, Any]] = [
                     ]
                 }
             },
-            "query": {"filter": "position_id == 2", "select": ["position_id", "quantity"]},
+            "query": {"filter": "security_id == 8", "select": ["security_id", "quantity"]},
         },
     },
     {
         "id": "ratio-of-sums-at-every-level",
         "title": "Post ratios are ratios of sums at every rollup level",
-        "why": "The grand-total avg_px is total notional / total quantity, not the mean of the "
-        "regional averages.",
+        "why": "The fund-wide upside to target is total target value / total value − 1, not the "
+        "mean of the regional upsides.",
         "kind": "run",
         "request": {
-            "dataset": "positions",
+            "dataset": "holdings",
             "query": {
-                "filter": "desk in ('Rates', 'Credit')",
+                "filter": "asset_class == 'Equity' and quantity > 0",
                 "group_by": ["region"],
                 "rollup": True,
                 "measures": [
-                    {"name": "notional", "fn": "sum", "of": "price * quantity"},
-                    {"name": "quantity", "fn": "sum", "of": "quantity"},
+                    {"name": "mv", "fn": "sum", "of": MV},
+                    {"name": "target_mv", "fn": "sum", "of": "target_price * quantity * fx_rate"},
                 ],
-                "post": [{"name": "avg_px", "expr": "notional / quantity"}],
+                "post": [{"name": "upside", "expr": "target_mv / mv - 1"}],
                 "sort": [{"by": "region"}],
+            },
+        },
+    },
+    {
+        "id": "weights-sum-to-one-at-every-level",
+        "title": "`total()` is the whole fund at every rollup level",
+        "why": "Each asset class's weight is its share of the whole fund, and the grand total's "
+        "weight is exactly 1.",
+        "kind": "run",
+        "request": {
+            "dataset": "holdings",
+            "query": {
+                "filter": "quantity > 0",
+                "group_by": ["asset_class"],
+                "rollup": True,
+                "measures": [{"name": "mv", "fn": "sum", "of": MV}],
+                "post": [{"name": "weight", "expr": "mv / total(mv)"}],
+                "sort": [{"by": "asset_class"}],
             },
         },
     },
     {
         "id": "wavg-skips-nulls",
         "title": "wavg ignores rows where the value or the weight is null",
-        "why": "Only the six bonds have yields; the book-wide weighted yield uses them alone.",
+        "why": "Only the bonds have yields; the fund-wide weighted yield uses them alone.",
         "kind": "run",
         "request": {
-            "dataset": "positions",
+            "dataset": "holdings",
             "query": {
                 "measures": [
-                    {
-                        "name": "wavg_yield",
-                        "fn": "wavg",
-                        "of": "yield",
-                        "weight": "abs(float(price * quantity))",
-                    }
+                    {"name": "wavg_yield", "fn": "wavg", "of": "yield", "weight": f"float({MV})"}
                 ]
             },
             "options": {"deterministic": True},
@@ -145,69 +157,69 @@ CASES: list[dict[str, Any]] = [
     {
         "id": "divide-by-zero-is-null",
         "title": "Division by zero gives null",
-        "why": "The Commodities desk has no shorts, so the count of shorts is 0 and the ratio "
-        "is null.",
+        "why": "The benchmark holds no cash, so the fund-to-benchmark ratio for cash is null.",
         "kind": "run",
         "request": {
-            "dataset": "positions",
+            "dataset": "holdings",
             "query": {
-                "filter": "desk == 'Commodities'",
-                "group_by": ["desk"],
+                "filter": "asset_class == 'Cash'",
+                "group_by": ["asset_class"],
                 "measures": [
-                    {"name": "long_qty", "fn": "sum", "of": "quantity", "where": "quantity > 0"},
-                    {"name": "short_qty", "fn": "count", "of": "quantity", "where": "quantity < 0"},
+                    {"name": "fund", "fn": "sum", "of": MV},
+                    {"name": "bench", "fn": "sum", "of": "price * bench_quantity * fx_rate"},
                 ],
-                "post": [{"name": "ratio", "expr": "long_qty / short_qty"}],
+                "post": [{"name": "ratio", "expr": "fund / bench"}],
             },
         },
     },
     {
         "id": "override-flows-into-formula",
         "title": "Formulas are recomputed after later overrides",
-        "why": "The notional formula is written first, the price override second; notional uses "
-        "the new price.",
+        "why": "The market value formula is written first, the price override second; the market "
+        "value uses the new price.",
         "kind": "run",
         "request": {
-            "dataset": "positions",
+            "dataset": "holdings",
             "extensions": {
                 "whatif": {
                     "steps": [
-                        {"kind": "formula", "name": "notional", "expr": "price * quantity"},
+                        {"kind": "formula", "name": "mv", "expr": MV},
                         {
                             "kind": "override",
                             "edits": [
-                                {"key": {"position_id": 1}, "column": "price", "value": "100.00"}
+                                {"key": {"security_id": 1}, "column": "price", "value": "100.00"}
                             ],
                         },
                     ]
                 }
             },
-            "query": {"filter": "position_id == 1", "select": ["price", "quantity", "notional"]},
+            "query": {"filter": "security_id == 1", "select": ["price", "quantity", "mv"]},
         },
     },
     {
         "id": "compare-pct-null-on-zero-base",
         "title": "Compare's percentage is null when the base is 0",
-        "why": "Before the override, the short count of Commodities is 0; after it, 1.",
+        "why": "The fund holds no Initech; after buying 10,000 shares its value goes from 0 to "
+        "643,000, and a change from 0 has no percentage.",
         "kind": "compare",
         "request": {
-            "dataset": "positions",
+            "dataset": "holdings",
             "extensions": {
                 "whatif": {
                     "steps": [
                         {
                             "kind": "override",
                             "edits": [
-                                {"key": {"position_id": 12}, "column": "quantity", "value": -150}
+                                {"key": {"security_id": 13}, "column": "quantity", "value": 10000}
                             ],
                         }
                     ]
                 }
             },
             "query": {
-                "filter": "desk == 'Commodities'",
-                "group_by": ["desk"],
-                "measures": [{"name": "shorts", "fn": "count_rows", "where": "quantity < 0"}],
+                "filter": "security_id == 13",
+                "group_by": ["security"],
+                "measures": [{"name": "mv", "fn": "sum", "of": MV}],
             },
         },
     },

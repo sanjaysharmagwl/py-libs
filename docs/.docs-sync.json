@@ -2,7 +2,7 @@
   "pages": {
     "calc/concepts/architecture.md": {
       "packages/calc/src/pylibs_calc/compile/logical.py": {
-        "digest": "96bb8cf93f91b229",
+        "digest": "a521d0e7127e4a77",
         "surface": [
           "calls Binary",
           "calls Budget",
@@ -18,6 +18,7 @@
           "calls columns()",
           "calls common_type()",
           "calls join_path()",
+          "calls walk()",
           "class DerivePlan",
           "class HiddenAgg: One aggregate over rows. ``sum`` of no values is null (SQL semantics).",
           "class LogicalQuery",
@@ -252,7 +253,7 @@
     },
     "calc/concepts/evaluation-order.md": {
       "packages/calc/src/pylibs_calc/compile/logical.py": {
-        "digest": "96bb8cf93f91b229",
+        "digest": "a521d0e7127e4a77",
         "surface": [
           "calls Binary",
           "calls Budget",
@@ -268,6 +269,7 @@
           "calls columns()",
           "calls common_type()",
           "calls join_path()",
+          "calls walk()",
           "class DerivePlan",
           "class HiddenAgg: One aggregate over rows. ``sum`` of no values is null (SQL semantics).",
           "class LogicalQuery",
@@ -370,12 +372,13 @@
     },
     "calc/concepts/numbers-types-nulls.md": {
       "packages/calc/src/pylibs_calc/compile/exprs.py": {
-        "digest": "0eebc433980b393b",
+        "digest": "74c3f3282dcd287b",
         "surface": [
           "calls Cast",
           "calls SpecError",
           "calls decimal()",
           "calls to_polars()",
+          "calls total_column()",
           "function as_type: Cast ``expr`` (of logical type ``source``) to ``target``. Narrowing a decimal\u2026",
           "function compile_expr",
           "function dec_dtype",
@@ -393,7 +396,7 @@
         ]
       },
       "packages/calc/src/pylibs_calc/compile/validate.py": {
-        "digest": "7dcc35e5acd3ecb2",
+        "digest": "21088264dd36c4c0",
         "surface": [
           "calls SpecError",
           "calls decimal()",
@@ -402,6 +405,7 @@
           "function check",
           "function check_predicate",
           "function lit_type",
+          "function total_column: The internal column that holds ``total(measure)``: the measure over all rows.",
           "imports_from collections_abc",
           "imports_from dataclasses",
           "imports_from dtypes.py",
@@ -1161,11 +1165,12 @@
         ]
       },
       "packages/calc/src/pylibs_calc/verify/reference.py": {
-        "digest": "f18f9428bed5aac1",
+        "digest": "8c3e01644db6e426",
         "surface": [
           "calls SortSpec",
           "calls pivot_label()",
           "calls quantize()",
+          "calls total_column()",
           "class ReferenceResult",
           "function aggregate_levels",
           "function compare",
@@ -1173,8 +1178,10 @@
           "function convert: Convert a value between logical types exactly as the typing rules say.",
           "function diff_rows",
           "function evaluate",
+          "function grand_totals: What ``total(m)`` reads: each measure it names, over every row the query sees.",
           "function hidden_agg",
           "function lit_value",
+          "function measure_value",
           "function pivot",
           "function plugin_value: Coerce a plugin's reference result to its declared type, as the Polars cast\u2026",
           "function rows_stage",
@@ -1407,12 +1414,13 @@
     },
     "calc/scenarios/filter-derive.md": {
       "packages/calc/src/pylibs_calc/compile/exprs.py": {
-        "digest": "0eebc433980b393b",
+        "digest": "74c3f3282dcd287b",
         "surface": [
           "calls Cast",
           "calls SpecError",
           "calls decimal()",
           "calls to_polars()",
+          "calls total_column()",
           "function as_type: Cast ``expr`` (of logical type ``source``) to ``target``. Narrowing a decimal\u2026",
           "function compile_expr",
           "function dec_dtype",
@@ -1430,7 +1438,7 @@
         ]
       },
       "packages/calc/src/pylibs_calc/compile/query.py": {
-        "digest": "fe348a51675f7c1e",
+        "digest": "39bb149414e8e09b",
         "surface": [
           "calls LimitExceeded",
           "calls SortSpec",
@@ -1439,6 +1447,7 @@
           "calls materialize()",
           "calls quantize()",
           "calls to_polars()",
+          "calls total_column()",
           "class Finished",
           "function agg_frame: Aggregate at the group level (and every rollup level), including pivot columns.",
           "function count_frame",
@@ -1458,6 +1467,7 @@
           "imports_from logical.py",
           "imports_from pylibs_calc/errors.py",
           "imports_from typing",
+          "imports_from validate.py",
           "module doc: Build Polars plans for a :class:`LogicalQuery`, and finish them eagerly. Row\u2026"
         ]
       },
@@ -1489,7 +1499,7 @@
     },
     "calc/scenarios/filtered-measures.md": {
       "packages/calc/src/pylibs_calc/compile/logical.py": {
-        "digest": "96bb8cf93f91b229",
+        "digest": "a521d0e7127e4a77",
         "surface": [
           "calls Binary",
           "calls Budget",
@@ -1505,6 +1515,7 @@
           "calls columns()",
           "calls common_type()",
           "calls join_path()",
+          "calls walk()",
           "class DerivePlan",
           "class HiddenAgg: One aggregate over rows. ``sum`` of no values is null (SQL semantics).",
           "class LogicalQuery",
@@ -1616,7 +1627,7 @@
     },
     "calc/scenarios/having.md": {
       "packages/calc/src/pylibs_calc/compile/query.py": {
-        "digest": "fe348a51675f7c1e",
+        "digest": "39bb149414e8e09b",
         "surface": [
           "calls LimitExceeded",
           "calls SortSpec",
@@ -1625,6 +1636,7 @@
           "calls materialize()",
           "calls quantize()",
           "calls to_polars()",
+          "calls total_column()",
           "class Finished",
           "function agg_frame: Aggregate at the group level (and every rollup level), including pivot columns.",
           "function count_frame",
@@ -1644,6 +1656,7 @@
           "imports_from logical.py",
           "imports_from pylibs_calc/errors.py",
           "imports_from typing",
+          "imports_from validate.py",
           "module doc: Build Polars plans for a :class:`LogicalQuery`, and finish them eagerly. Row\u2026"
         ]
       },
@@ -1675,7 +1688,7 @@
     },
     "calc/scenarios/measures.md": {
       "packages/calc/src/pylibs_calc/compile/logical.py": {
-        "digest": "96bb8cf93f91b229",
+        "digest": "a521d0e7127e4a77",
         "surface": [
           "calls Binary",
           "calls Budget",
@@ -1691,6 +1704,7 @@
           "calls columns()",
           "calls common_type()",
           "calls join_path()",
+          "calls walk()",
           "class DerivePlan",
           "class HiddenAgg: One aggregate over rows. ``sum`` of no values is null (SQL semantics).",
           "class LogicalQuery",
@@ -1718,7 +1732,7 @@
         ]
       },
       "packages/calc/src/pylibs_calc/compile/query.py": {
-        "digest": "fe348a51675f7c1e",
+        "digest": "39bb149414e8e09b",
         "surface": [
           "calls LimitExceeded",
           "calls SortSpec",
@@ -1727,6 +1741,7 @@
           "calls materialize()",
           "calls quantize()",
           "calls to_polars()",
+          "calls total_column()",
           "class Finished",
           "function agg_frame: Aggregate at the group level (and every rollup level), including pivot columns.",
           "function count_frame",
@@ -1746,6 +1761,7 @@
           "imports_from logical.py",
           "imports_from pylibs_calc/errors.py",
           "imports_from typing",
+          "imports_from validate.py",
           "module doc: Build Polars plans for a :class:`LogicalQuery`, and finish them eagerly. Row\u2026"
         ]
       },
@@ -1818,7 +1834,7 @@
     },
     "calc/scenarios/pivot.md": {
       "packages/calc/src/pylibs_calc/compile/query.py": {
-        "digest": "fe348a51675f7c1e",
+        "digest": "39bb149414e8e09b",
         "surface": [
           "calls LimitExceeded",
           "calls SortSpec",
@@ -1827,6 +1843,7 @@
           "calls materialize()",
           "calls quantize()",
           "calls to_polars()",
+          "calls total_column()",
           "class Finished",
           "function agg_frame: Aggregate at the group level (and every rollup level), including pivot columns.",
           "function count_frame",
@@ -1846,6 +1863,7 @@
           "imports_from logical.py",
           "imports_from pylibs_calc/errors.py",
           "imports_from typing",
+          "imports_from validate.py",
           "module doc: Build Polars plans for a :class:`LogicalQuery`, and finish them eagerly. Row\u2026"
         ]
       },
@@ -1877,7 +1895,7 @@
     },
     "calc/scenarios/post-ratios.md": {
       "packages/calc/src/pylibs_calc/compile/logical.py": {
-        "digest": "96bb8cf93f91b229",
+        "digest": "a521d0e7127e4a77",
         "surface": [
           "calls Binary",
           "calls Budget",
@@ -1893,6 +1911,7 @@
           "calls columns()",
           "calls common_type()",
           "calls join_path()",
+          "calls walk()",
           "class DerivePlan",
           "class HiddenAgg: One aggregate over rows. ``sum`` of no values is null (SQL semantics).",
           "class LogicalQuery",
@@ -1947,7 +1966,7 @@
     },
     "calc/scenarios/rollup.md": {
       "packages/calc/src/pylibs_calc/compile/logical.py": {
-        "digest": "96bb8cf93f91b229",
+        "digest": "a521d0e7127e4a77",
         "surface": [
           "calls Binary",
           "calls Budget",
@@ -1963,6 +1982,7 @@
           "calls columns()",
           "calls common_type()",
           "calls join_path()",
+          "calls walk()",
           "class DerivePlan",
           "class HiddenAgg: One aggregate over rows. ``sum`` of no values is null (SQL semantics).",
           "class LogicalQuery",
@@ -1990,7 +2010,7 @@
         ]
       },
       "packages/calc/src/pylibs_calc/compile/query.py": {
-        "digest": "fe348a51675f7c1e",
+        "digest": "39bb149414e8e09b",
         "surface": [
           "calls LimitExceeded",
           "calls SortSpec",
@@ -1999,6 +2019,7 @@
           "calls materialize()",
           "calls quantize()",
           "calls to_polars()",
+          "calls total_column()",
           "class Finished",
           "function agg_frame: Aggregate at the group level (and every rollup level), including pivot columns.",
           "function count_frame",
@@ -2018,6 +2039,7 @@
           "imports_from logical.py",
           "imports_from pylibs_calc/errors.py",
           "imports_from typing",
+          "imports_from validate.py",
           "module doc: Build Polars plans for a :class:`LogicalQuery`, and finish them eagerly. Row\u2026"
         ]
       }
@@ -2252,6 +2274,73 @@
           "imports_from typing",
           "inherits Model",
           "module doc: Queries (views) and the top-level requests. A query runs its stages in a fixed\u2026"
+        ]
+      }
+    },
+    "calc/scenarios/weights.md": {
+      "packages/calc/src/pylibs_calc/compile/logical.py": {
+        "digest": "a521d0e7127e4a77",
+        "surface": [
+          "calls Binary",
+          "calls Budget",
+          "calls ColRef",
+          "calls IsNull",
+          "calls LimitExceeded",
+          "calls Logic",
+          "calls SpecError",
+          "calls Typed",
+          "calls check()",
+          "calls check_predicate()",
+          "calls coerce_value()",
+          "calls columns()",
+          "calls common_type()",
+          "calls join_path()",
+          "calls walk()",
+          "class DerivePlan",
+          "class HiddenAgg: One aggregate over rows. ``sum`` of no values is null (SQL semantics).",
+          "class LogicalQuery",
+          "class LogicalQuery.value_names",
+          "class MeasurePlan",
+          "class PivotPlan",
+          "class PostPlan",
+          "class SortSpec",
+          "function budget",
+          "function check_name: Reject names reserved for the engine's internal columns.",
+          "function hidden",
+          "function materializable: The type a column computed by ``typed`` gets; always-null expressions have none.",
+          "function plan_query",
+          "imports_from collections_abc",
+          "imports_from config.py",
+          "imports_from dataclasses",
+          "imports_from dtypes.py",
+          "imports_from expr.py",
+          "imports_from plugins.py",
+          "imports_from pylibs_calc/errors.py",
+          "imports_from spec/query.py",
+          "imports_from typing",
+          "imports_from validate.py",
+          "module doc: Logical plans: a validated, typed description of what a request computes. All\u2026"
+        ]
+      },
+      "packages/calc/src/pylibs_calc/compile/validate.py": {
+        "digest": "21088264dd36c4c0",
+        "surface": [
+          "calls SpecError",
+          "calls decimal()",
+          "class Budget",
+          "class Typed: An expression node with its result type and the type its operands are cast to.",
+          "function check",
+          "function check_predicate",
+          "function lit_type",
+          "function total_column: The internal column that holds ``total(measure)``: the measure over all rows.",
+          "imports_from collections_abc",
+          "imports_from dataclasses",
+          "imports_from dtypes.py",
+          "imports_from expr.py",
+          "imports_from plugins.py",
+          "imports_from pylibs_calc/errors.py",
+          "imports_from typing",
+          "module doc: Type checking: turns an expression tree into a :class:`Typed` tree against a\u2026"
         ]
       }
     },

@@ -1,18 +1,20 @@
-"""Rollup: book -> region -> desk subtotals in one result."""
+"""Rollup: fund -> asset class -> sector, with each subtotal's weight in the fund."""
 
 from book import engine, table
 
 REQUEST = {
-    "dataset": "positions",
+    "dataset": "holdings",
     "query": {
-        "derive": [{"name": "notional", "expr": "price * quantity"}],
-        "group_by": ["region", "desk"],
+        "filter": "quantity > 0",
+        "derive": [{"name": "mv", "expr": "round(price * quantity * fx_rate, 2)"}],
+        "group_by": ["asset_class", "sector"],
         "rollup": True,
         "measures": [
-            {"name": "notional", "fn": "sum", "of": "notional"},
-            {"name": "positions", "fn": "count_rows"},
+            {"name": "mv", "fn": "sum", "of": "mv"},
+            {"name": "holdings", "fn": "count_rows"},
         ],
-        "sort": [{"by": "region"}, {"by": "desk"}],
+        "post": [{"name": "weight_pct", "expr": "round(100 * mv / total(mv), 2)"}],
+        "sort": [{"by": "asset_class"}, {"by": "sector"}],
     },
 }
 

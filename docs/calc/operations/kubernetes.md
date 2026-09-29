@@ -24,7 +24,7 @@ covers:
 ```yaml
 containers:
   - name: calc
-    image: registry.example.com/risk-calc:1.4.0
+    image: registry.example.com/portfolio-calc:1.4.0
     command: ["uvicorn", "service:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
     env:
       - {name: POLARS_MAX_THREADS, value: "4"}

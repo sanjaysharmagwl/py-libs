@@ -118,8 +118,9 @@ class AgGridAdapter:
     """Translate SSRM requests into engine requests and results back into grid rows.
 
     ``custom_aggs`` maps an AG Grid ``aggFunc`` name to a function building the measure for a
-    column, e.g. ``{"wavg_notional": lambda c: Measure(name=c, fn="wavg", of=c,
-    weight="notional")}``. ``in_range_inclusive`` must match the grid's filter option.
+    column, e.g. ``{"wavg_yield": lambda c: Measure(name=c, fn="wavg", of=c,
+    weight="float(price * quantity * fx_rate)")}``. ``in_range_inclusive`` must match the
+    grid's filter option.
     """
 
     separator: str = "_"

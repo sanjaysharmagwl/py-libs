@@ -1,18 +1,20 @@
-"""Filtered measures: long and short notional side by side, like SQL FILTER (WHERE ...)."""
+"""Filtered measures: the fund's asset mix per region, side by side, like SQL FILTER (WHERE ...)."""
 
 from book import engine, table
 
 REQUEST = {
-    "dataset": "positions",
+    "dataset": "holdings",
     "query": {
-        "derive": [{"name": "notional", "expr": "price * quantity"}],
-        "group_by": ["desk"],
+        "filter": "quantity > 0",
+        "derive": [{"name": "mv", "expr": "round(price * quantity * fx_rate, 2)"}],
+        "group_by": ["region"],
         "measures": [
-            {"name": "long", "fn": "sum", "of": "notional", "where": "quantity > 0"},
-            {"name": "short", "fn": "sum", "of": "notional", "where": "quantity < 0"},
-            {"name": "net", "fn": "sum", "of": "notional"},
+            {"name": "equity", "fn": "sum", "of": "mv", "where": "asset_class == 'Equity'"},
+            {"name": "bonds", "fn": "sum", "of": "mv", "where": "asset_class == 'Fixed Income'"},
+            {"name": "cash", "fn": "sum", "of": "mv", "where": "asset_class == 'Cash'"},
+            {"name": "fund", "fn": "sum", "of": "mv"},
         ],
-        "sort": [{"by": "desk"}],
+        "sort": [{"by": "region"}],
     },
 }
 

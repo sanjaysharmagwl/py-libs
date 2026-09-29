@@ -8,7 +8,7 @@ from pylibs_calc_whatif import WhatIfPlugin
 calc = engine()
 scenarios = calc.plugin(WhatIfPlugin).scenarios
 ana = CalcContext(principal="ana")
-s = scenarios.create("positions", "credit stress", ctx=ana)
+s = scenarios.create("holdings", "global recession", ctx=ana)
 s = scenarios.append(
     s.id,
     [
@@ -16,24 +16,39 @@ s = scenarios.append(
             "kind": "shock",
             "column": "price",
             "op": "pct",
-            "value": -10,
-            "where": "desk == 'Credit'",
+            "value": -20,
+            "where": "asset_class == 'Equity'",
         },
-        {"kind": "shock", "column": "price", "op": "pct", "value": -3, "where": "desk == 'Rates'"},
+        {
+            "kind": "shock",
+            "column": "price",
+            "op": "pct",
+            "value": -5,
+            "where": "asset_class == 'Fixed Income' and sector != 'Government'",
+        },
+        {
+            "kind": "shock",
+            "column": "price",
+            "op": "pct",
+            "value": 3,
+            "where": "sector == 'Government'",
+        },
     ],
     expected_version=0,
     ctx=ana,
 )
-# Step 1 (Credit -10%) turns out to be too harsh: disable it. It stays in the log.
-s = scenarios.append(s.id, [{"kind": "disable", "seq": 1}], expected_version=2, ctx=ana)
+# Step 1 (equities -20%) turns out to be too harsh: disable it. It stays in the log.
+s = scenarios.append(s.id, [{"kind": "disable", "seq": 1}], expected_version=3, ctx=ana)
 
 QUERY = {
-    "filter": "desk in ('Rates', 'Credit')",
-    "select": ["position_id", "desk", "price"],
-    "sort": [{"by": "position_id"}],
+    "filter": "quantity > 0",
+    "derive": [{"name": "mv", "expr": "round(price * quantity * fx_rate, 2)"}],
+    "group_by": ["asset_class"],
+    "measures": [{"name": "mv", "fn": "sum", "of": "mv"}],
+    "sort": [{"by": "asset_class"}],
 }
-request = {"dataset": "positions", "extensions": {"whatif": {"scenario": s.id}}, "query": QUERY}
-print(table(calc.run(request)))
+request = {"dataset": "holdings", "extensions": {"whatif": {"scenario": s.id}}, "query": QUERY}
+print(table(calc.compare(request)))
 print("| seq | author | step |\n| --- | --- | --- |")
 for entry in scenarios.log(s.id):
     step = entry.step

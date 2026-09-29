@@ -31,7 +31,7 @@ from pylibs_calc.spec.expr import (
     Unary,
 )
 
-from .validate import Typed
+from .validate import Typed, total_column
 
 _INT64_MIN, _INT64_MAX = -(2**63), 2**63 - 1
 
@@ -216,6 +216,10 @@ def _binary(t: Typed, node: Binary) -> pl.Expr:
 def _func(t: Typed, node: Func) -> pl.Expr:
     if t.impl is not None:
         return _plugin_func(t)
+    if node.name == "total":
+        measure = node.args[0]
+        assert isinstance(measure, ColRef)
+        return pl.col(total_column(measure.name))
     name = node.name
     args = t.args
     first = args[0]

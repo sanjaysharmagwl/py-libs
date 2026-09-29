@@ -9,8 +9,8 @@ covers:
 # Audit a number
 
 !!! question "The business question"
-    *"Model risk is asking how this desk total was produced, and whether we can reproduce it
-    next quarter."*
+    *"Investment risk is asking how the fund's active weight in tech under the stress scenario was
+    produced, and whether we can reproduce it next quarter."*
 
 Every result carries the information needed to **reproduce**, **explain** and **independently check** it.
 

@@ -7,8 +7,8 @@ covers:
 # Formula columns
 
 !!! question "The business question"
-    *"My scenario defines notional as price × quantity. If someone later corrects a price, does
-    notional follow?"*
+    *"My scenario defines market value as price × quantity × FX rate. If someone later changes a
+    price, does the market value follow?"*
 
 !!! info "What-if plugin"
     This feature comes from the [what-if plugin](../whatif/index.md) (`pylibs-calc-whatif`). Its
@@ -40,7 +40,7 @@ A **formula step** defines a column that belongs to the scenario, so every query
 
 ## What to notice
 
-- The formula comes **before** the override in the list, yet Stark Industries' notional is 300.00 × 400 = **120,000.00**, using the new price.
+- The formula comes **before** the override in the list, yet Stark Industries' market value is 300.00 × 2,500 = **750,000.00**, using the new price.
 - Value changes (overrides and shocks) are applied in log order first. Then the formulas are evaluated, in dependency order, so a formula can use another formula.
 - A later formula step with the same `name` **redefines** the column.
 

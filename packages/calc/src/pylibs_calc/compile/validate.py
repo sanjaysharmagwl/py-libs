@@ -82,6 +82,11 @@ def lit_type(node: Lit) -> LType:
     return _LIT_TYPES[node.type]
 
 
+def total_column(measure: str) -> str:
+    """The internal column that holds ``total(measure)``: the measure over all rows."""
+    return f"__grand__{measure}"
+
+
 def check(
     node: Node,
     env: Mapping[str, LType],
@@ -90,13 +95,16 @@ def check(
     budget: Budget | None = None,
     *,
     functions: Mapping[str, FunctionDef] | None = None,
+    totals: Mapping[str, LType] | None = None,
 ) -> Typed:
     """Type-check ``node`` against the columns in ``env`` or raise :class:`SpecError`.
 
     ``functions`` are plugin functions (see :class:`~pylibs_calc.plugins.Registry`).
+    ``totals`` are the measures ``total()`` may name; without it ``total()`` is an error (it
+    only means something after aggregation, in ``post`` and ``having``).
     """
     budget = budget or Budget()
-    return _Checker(env, cfg, budget, functions or {}).check(node, path, 1)
+    return _Checker(env, cfg, budget, functions or {}, totals).check(node, path, 1)
 
 
 def check_predicate(
@@ -107,8 +115,9 @@ def check_predicate(
     budget: Budget | None = None,
     *,
     functions: Mapping[str, FunctionDef] | None = None,
+    totals: Mapping[str, LType] | None = None,
 ) -> Typed:
-    typed = check(node, env, cfg, path, budget, functions=functions)
+    typed = check(node, env, cfg, path, budget, functions=functions, totals=totals)
     if typed.ltype.kind not in (Kind.BOOL, Kind.NULL):
         raise SpecError(
             f"expected a true/false condition, got {typed.ltype}", code="type_mismatch", path=path
@@ -123,11 +132,13 @@ class _Checker:
         cfg: NumericConfig,
         budget: Budget,
         functions: Mapping[str, FunctionDef],
+        totals: Mapping[str, LType] | None,
     ) -> None:
         self.env = env
         self.cfg = cfg
         self.budget = budget
         self.functions = functions
+        self.totals = totals
 
     def check(self, node: Node, path: str, level: int) -> Typed:
         self.budget.nodes += 1
@@ -195,6 +206,8 @@ class _Checker:
             result = common_type(then.ltype, other.ltype, "the branches of an if")
             return Typed(node, result, (cond, then, other), result)
         if isinstance(node, Func):
+            if node.name == "total":
+                return self._total(node)
             args = tuple(
                 self.check(a, join_path(path, "args", i), level) for i, a in enumerate(node.args)
             )
@@ -217,6 +230,21 @@ class _Checker:
                 detail={"column": node.name},
             )
         return Typed(node, ltype)
+
+    def _total(self, node: Func) -> Typed:
+        if self.totals is None:
+            raise SpecError(
+                "total() is only allowed in post and having, after aggregation",
+                code="invalid_total",
+            )
+        arg = node.args[0]
+        if not isinstance(arg, ColRef) or arg.name not in self.totals:
+            raise SpecError(
+                "total() takes the name of a measure, e.g. total(mv)",
+                code="invalid_total",
+                detail={"measures": sorted(self.totals)},
+            )
+        return Typed(node, self.totals[arg.name])
 
     def _func(self, node: Func, args: tuple[Typed, ...]) -> Typed:
         name = node.name

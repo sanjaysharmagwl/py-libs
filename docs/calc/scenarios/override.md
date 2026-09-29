@@ -7,14 +7,15 @@ covers:
 # Override a cell
 
 !!! question "The business question"
-    *"The mark on ACME is stale: it should be 95.00. And Globex was just downgraded to B. What
-    does my Credit book look like now?"*
+    *"Globex's bond hasn't traded for weeks and the quoted price of 88.40 is stale. Our credit
+    analyst thinks 80.00 is fair, and the issuer was just downgraded to B. What do the fund's bonds
+    look like now?"*
 
 !!! info "What-if plugin"
     This feature comes from the [what-if plugin](../whatif/index.md) (`pylibs-calc-whatif`). Its
     steps go in a request's `extensions.whatif` block.
 
-An **override** sets individual cells, found by the row's key. It is how a trader's manual edit in a grid gets into the calculation.
+An **override** sets individual cells, found by the row's key. It is how an analyst's or a PM's manual edit in a grid gets into the calculation: a price for an illiquid bond, a new rating, or a trade the PM is considering (a new `quantity`).
 
 ## Try it
 
@@ -40,10 +41,11 @@ An **override** sets individual cells, found by the row's key. It is how a trade
 
 ## What to notice
 
-- **Only the two edited cells change.** Initech is untouched.
+- **Only the two edited cells change.** ACME and the government bonds are untouched.
+- Everything computed from the price follows: Globex's market value, its weight, the fund's NAV and every other holding's weight. Run a [compare](compare.md) with the same `extensions` to see the change next to the base.
 - The edit is in the request's `extensions.whatif.steps`, so it applies to **this request only**. To keep it and share it, put it in a [saved scenario](saved-scenarios.md).
-- `value` is given as the **string** `"95.00"`, so it stays an exact decimal. A JSON number would work too, but strings avoid any float rounding on the way in.
-- `key` needs a value for every key column of the dataset (here only `position_id`).
+- `value` is given as the **string** `"80.00"`, so it stays an exact decimal. A JSON number would work too, but strings avoid any float rounding on the way in.
+- `key` needs a value for every key column of the dataset (here only `security_id`).
 
 ## Gotchas
 

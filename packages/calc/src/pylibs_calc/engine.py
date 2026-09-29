@@ -3,9 +3,9 @@
 Typical embedding::
 
     catalog = Catalog()
-    catalog.register_frame("positions", df, key_columns=["position_id"])
+    catalog.register_frame("holdings", df, key_columns=["security_id"])
     engine = CalcEngine(catalog, plugins=[...])
-    result = engine.run({"dataset": "positions", "query": {"group_by": ["sector"], ...}})
+    result = engine.run({"dataset": "holdings", "query": {"group_by": ["sector"], ...}})
 
 :class:`CalcEngine` is the public face; :class:`Kernel` holds the machinery (executor, caches,
 view resolution, query execution) and is what plugin operations build on.

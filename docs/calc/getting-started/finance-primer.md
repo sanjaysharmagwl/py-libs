@@ -1,211 +1,236 @@
-# Finance primer: start here
+# Investment primer: start here
 
-`pylibs-calc` is built for trading and risk teams, and the rest of these docs use their vocabulary:
-*positions*, *desks*, *notional*, *shocks*, *basis points*, *P&L impact*. If those words are new to
-you, read this page first. It assumes no finance background, takes about fifteen minutes, and
-every number on it is computed by the engine from the same twelve-row example book the other pages use.
+`pylibs-calc` is built for **portfolio managers** (fund managers), **research analysts**, and the
+teams around them at an active asset manager: investment risk, investment compliance and client
+reporting. The rest of these docs use their vocabulary: *holdings*, *NAV*, *weights*,
+*benchmark*, *active weight*, *shocks*, *basis points*. If those words are new to you, read this page
+first. It assumes no finance background and takes about fifteen minutes. Every number on it is
+computed by the engine from the same example fund that the other pages use.
 
 !!! abstract "The whole idea in one paragraph"
-    A bank or fund holds a list of things it owns (or owes): bonds, shares, currencies, oil.
-    Each line of that list is a **position**, and the list is the **book**. Teams called
-    **desks** manage different parts of the book. Every day people ask *"what is all of this
-    worth, broken down by desk or region?"* and, more importantly, *"what would it be worth
-    **if** the market moved?"* A **shock** is one of those imagined market moves, and the
-    difference it makes is the **P&L impact**. `pylibs-calc` answers exactly these questions over
-    a table of positions.
+    An asset manager runs **funds**: pools of clients' money, each invested in shares, bonds and cash
+    by a **portfolio manager** (PM). Each line of a fund is a **holding**, and the value of all of
+    them together is the fund's **net asset value (NAV)**. Every fund is measured against a
+    **benchmark**, an index it is trying to beat. What the PM actually decides is each holding's
+    **weight**: its share of the NAV. The weight's difference from the benchmark's weight is the
+    **active weight**, where the PM is **overweight** or **underweight**. Research **analysts**
+    study companies and set **target prices** that feed those decisions. Every day people ask *"how
+    is the fund positioned, by sector, country or currency, against its benchmark?"* and *"what
+    happens to the fund, and to its lead over the benchmark, **if** markets move?"* A **shock** is
+    one of those imagined market moves. `pylibs-calc` answers exactly these questions over a table
+    of holdings.
 
-## 1. The book, column by column
+## 1. The fund, column by column
 
-Here is the example book. Each row is one position:
+The example is a fictional multi-asset **Global Income Fund**. It reports in US dollars, and its
+benchmark is a notional blend of 60% global equities and 40% government bonds. Fund and benchmark
+share one table, with one row per security that either of them holds:
 
 ```python exec="on"
-from book import positions, table
+from book import holdings, table
 
-print(table(positions()))
+print(table(holdings()))
 ```
 
 ### What each column means
 
-`position_id`
+`security_id`
 :   A unique number for the row. In the engine it is the **key column**: the thing that identifies a
     row when you edit it.
 
-`instrument`
-:   *What* is held. The book has five kinds, one per desk:
+`security`
+:   *What* is held. The fund has three **asset classes**:
 
-    | Kind | Examples in the book | What it is |
+    | Asset class | Examples in the fund | What it is |
     | --- | --- | --- |
-    | **Government bond** | `UST 4.25% 2034` (US Treasury), `Bund 2.5% 2033` (German), `JGB 0.9% 2032` (Japanese) | A loan to a government. The name reads *issuer, coupon (yearly interest rate), year it is repaid*. |
-    | **Corporate bond** | `ACME Corp 5.1% 2030`, `Globex 6.0% 2029` | The same, but lent to a company, so riskier. |
-    | **Equity** (a stock or share) | `Umbrella Health`, `Stark Industries` | Part-ownership of a company. |
-    | **FX forward** | `EUR/USD fwd`, `USD/JPY fwd` | An agreement to swap one currency for another at a fixed rate on a future date. FX means *foreign exchange*. |
-    | **Commodity future** | `Brent Dec-26` | An agreement to buy or sell a raw material (here Brent crude oil) in December 2026. |
+    | **Equity** (shares) | `Wayne Financial`, `Cyberdyne Systems`, `Kaiju Motors` | Part-ownership of a company. |
+    | **Fixed income** (bonds) | `UST 4.25% 2034` (US Treasury), `Bund 2.5% 2033` (German), `Gilt 4.0% 2031` (UK), `JGB 0.9% 2032` (Japanese) | A loan to a government. The name reads *issuer, coupon (yearly interest), year it is repaid*. |
+    | | `ACME Corp 5.1% 2030`, `Globex 6.0% 2029` | The same, but lent to a company (**credit**), so riskier and higher-yielding. |
+    | **Cash** | `USD Cash` | Money not invested yet, kept for redemptions and new ideas. |
 
-`desk`
-:   The **team** (and its traders) responsible for the position. Desks are usually organised by asset class:
-    **Rates** trades government bonds (their value depends on interest rates), **Credit** trades corporate
-    bonds (their value depends on whether companies repay), **Equities** trades stocks, **FX**
-    trades currencies, and **Commodities** trades raw materials. "Show me each desk" is the most common
-    question anyone asks, which is why it appears in almost every example.
+    The company names are made up.
 
-`sector`
-:   The part of the economy the issuer is in: Tech, Energy, Health, Financials, Industrials. Used to
-    ask things like "what if Tech falls?"
+`asset_class`, `sector`, `country`, `region`
+:   How the fund is sliced when a PM looks at it. Sectors follow the usual industry classification
+    (Information Technology, Financials, Health Care, …), with `Government` for government bonds
+    and `Cash` for cash. Regions are North America, UK, Europe ex UK and Japan.
 
-`region`
-:   Where the issuer is: **AMER** (the Americas), **EMEA** (Europe, Middle East and Africa) and
-    **APAC** (Asia-Pacific).
-
-`rating`
-:   A credit agency's grade for how likely the issuer is to repay, from best to worst:
-    `AAA`, `AA`, `A`, `BBB`, `BB`, … `BBB` and above is **investment grade**, and below it is
-    **high yield** (sometimes called "junk"). It is null for oil, which has no issuer to rate.
+`currency`, `fx_rate`
+:   The currency the security is priced in, and what one unit of that currency is worth in US dollars
+    (the fund's **base currency**): `1.27` for GBP, `0.0067` for JPY. Foreign holdings carry
+    **currency risk**: if the dollar strengthens, they are worth fewer dollars.
 
 `price`
-:   What one unit is worth today. The price used to value a position is called its **mark**, and
-    updating it is **marking** the book. Bonds are quoted per 100 of face value, so `98.50` means "98.5% of
-    the amount repaid at maturity". The column is an exact decimal with 2 places, because money is not
-    rounded casually.
+:   What one unit is worth today, in its own currency. Shares are priced per share. Bonds are quoted
+    per 100 of face value, so `98.50` means "98.5% of the amount repaid at maturity". The column is
+    an exact decimal with 2 places, because money is not rounded casually.
 
 `quantity`
-:   How many units are held. **Positive means long** (you own it and gain when the price rises).
-    **Negative means short** (you owe it, or sold it without owning it, and you *gain* when the price
-    falls).
+:   How many units **the fund** holds: shares for equities, and 100s of face value for bonds. It is
+    `0` for a security that only the benchmark holds. The fund doesn't own `Initech` or the `JGB`,
+    so it is completely **underweight** them. Funds like this one are **long-only**: they never hold
+    a negative quantity.
 
-`yield`
-:   For bonds only, the yearly return you would earn by buying at today's price and holding to
-    maturity, as a fraction: `0.0425` is 4.25%. **When yields rise, bond prices fall**, and vice versa.
-    It is null for anything that isn't a bond.
+`bench_quantity`
+:   How many units **the benchmark** would hold if it were a portfolio of about the same size as the
+    fund. It is `0` for an **off-benchmark** holding, one the PM bought even though the index
+    doesn't contain it, such as the two corporate bonds and the cash.
 
-!!! note "Simplifications this book makes"
-    Real systems value each instrument type with its own formula, convert everything into one
-    currency, and handle bond face value properly. The example book simply uses
-    `price × quantity` for everything, so you can follow the arithmetic by hand. That is why the
-    `USD/JPY fwd` row looks enormous: 148.30 yen per dollar × −50,000 is a number in yen, not
-    dollars. The engine doesn't care what the numbers mean. It computes what you ask for, exactly.
+`rating`, `yield`, `duration`
+:   For bonds only.
+    - `rating` is a credit agency's grade for how likely the issuer is to repay, from best to worst
+      `AAA`, `AA`, `A`, `BBB`, `BB`, … `BBB` and above is **investment grade**; below it is
+      **high yield**.
+    - `yield` is the yearly return you would earn by buying at today's price and holding to
+      maturity, as a fraction: `0.0425` is 4.25%. **When yields rise, bond prices fall.**
+    - `duration` (in years) measures how much a bond's price reacts to a change in yields: roughly
+      *price change ≈ −duration × yield change*.
 
-## 2. Numbers you compute from the book
+`analyst`, `target_price`
+:   Research coverage. `analyst` is the analyst who covers the security: `ana` covers equities and
+    `raj` covers credit. `target_price` is where the equity analyst expects the share price to be in
+    a year. The **upside to target** (`target_price / price − 1`) is one input to the PM's decisions.
 
-**Market value** (also called **notional** or **exposure** on these pages) is how much money a position
-represents: `price × quantity`. It is negative for a short position.
+!!! note "Simplifications this example makes"
+    Real portfolio systems hold benchmark **weights** from an index provider, account for accrued
+    interest on bonds and hedge some of the currency risk. The example keeps everything as
+    `price × quantity × fx_rate`, so you can follow the arithmetic by hand. The engine doesn't care
+    what the numbers mean: it computes exactly what you ask for.
 
-```python exec="on"
-from book import engine, table
+## 2. Numbers you compute from the holdings
 
-result = engine().run(
-    {
-        "dataset": "positions",
-        "query": {
-            "derive": [{"name": "market_value", "expr": "price * quantity"}],
-            "select": ["position_id", "instrument", "desk", "price", "quantity", "market_value"],
-            "filter": "desk in ('Rates', 'Equities')",
-            "sort": [{"by": "position_id"}],
-        },
-    }
-)
-print(table(result))
-```
-
-Adding positions up per desk gives two different totals, and both matter:
-
-- **Net** is the signed sum: longs and shorts cancel. It answers *"which way are we betting, and how much?"*
-- **Gross** is the sum of absolute values: nothing cancels. It answers *"how big is our activity?"*
-  Risk **limits** are often set on gross, because a desk that is long 1m and short 1m nets to zero
-  but can still lose money on both.
+**Market value** (in the base currency) is how much money a holding represents:
+`price × quantity × fx_rate`. The fund's **NAV** is the sum of all its market values. A holding's
+**weight** is its market value divided by the NAV. In the engine that division is
+[`total()`](../scenarios/weights.md), which is the same measure over the whole fund:
 
 ```python exec="on"
 from book import engine, table
 
 result = engine().run(
     {
-        "dataset": "positions",
+        "dataset": "holdings",
         "query": {
-            "group_by": ["desk"],
-            "measures": [
-                {"name": "net", "fn": "sum", "of": "price * quantity"},
-                {"name": "gross", "fn": "sum", "of": "abs(price * quantity)"},
-                {"name": "positions", "fn": "count_rows"},
+            "filter": "quantity > 0",
+            "derive": [{"name": "mv", "expr": "round(price * quantity * fx_rate, 2)"}],
+            "group_by": ["security", "currency"],
+            "measures": [{"name": "mv", "fn": "sum", "of": "mv"}],
+            "post": [
+                {"name": "nav", "expr": "total(mv)"},
+                {"name": "weight_pct", "expr": "round(100 * mv / total(mv), 2)"},
             ],
-            "sort": [{"by": "desk"}],
+            "sort": [{"by": "weight_pct", "desc": True}],
+            "page": {"limit": 6},
         },
     }
 )
 print(table(result))
 ```
 
-Equities is a good one to read: long Umbrella and Stark, short Wayne, so net (207,850) is much smaller
-than gross (498,350).
+The same holding means two different things, depending on what you compare it with:
 
-Other summary numbers you will meet:
+- **Weight** answers *"how much of the fund is in it?"* Wayne Financial is 11.5% of the fund.
+- **Active weight** answers *"how different is the fund from its benchmark?"* It is the fund's
+  weight minus the benchmark's weight. A positive active weight is an **overweight**, a bet that
+  the holding will do better than the index. A negative one is an **underweight**. Managers are
+  usually judged, and constrained, on active weights, not on weights.
 
-- **Weighted average yield**: the average yield of a desk's bonds, where bigger positions count
-  more. A plain average would let a tiny bond count as much as a huge one. The engine calls this
-  `wavg`; see [Measures](../scenarios/measures.md).
-- **Ratio of sums**: e.g. *average price = total value ÷ total quantity*, computed after adding up, not by averaging the prices. See [Ratios after aggregation](../scenarios/post-ratios.md).
-- **Subtotals**: a total per region, then per desk inside it, then a grand total, all in one grid.
-  In the engine this is a [rollup](../scenarios/rollup.md).
-- **Pivot**: a matrix, such as desks down the side and regions across the top. See [Pivot](../scenarios/pivot.md).
-- **Limit breach**: a desk whose exposure is over the limit risk has set for it. See [Having](../scenarios/having.md).
+```python exec="on"
+from book import engine, request_of, table
+
+print(table(engine().run(request_of("19_weights.py"))))
+```
+
+Read the last row: the benchmark has almost 31% in Information Technology and the fund has less
+than 16%, so the fund is **15 points underweight tech**. If tech sells off, the fund loses less than
+its benchmark; if tech rallies, it falls behind.
+
+Other numbers you will meet:
+
+- **Weighted average yield and duration**: the average across bonds, where bigger holdings count
+  more. The engine calls this `wavg`; see [Measures](../scenarios/measures.md).
+- **Upside to target** for a region or sector: total target value ÷ total value − 1. This is a
+  **ratio of sums**, computed after adding up, not by averaging each stock's upside. See
+  [Ratios after aggregation](../scenarios/post-ratios.md).
+- **Subtotals**: a weight per asset class, then per sector inside it, then the whole fund, all in
+  one grid. In the engine this is a [rollup](../scenarios/rollup.md).
+- **Pivot**: a matrix, such as asset classes down the side and currencies across the top, to see
+  currency exposure. See [Pivot](../scenarios/pivot.md).
+- **Concentration and active-weight limits**: rules like "no single holding above 10% of the fund"
+  or "no sector more than 5 points away from the benchmark". See [Having](../scenarios/having.md).
 
 ## 3. Asking "what if?"
 
-This is the reason the engine exists. People rarely only want today's numbers; they want to know what
-happens to them under a change.
+This is the reason the engine exists. PMs and analysts rarely want only today's numbers; they want
+to know what happens to them under a change.
 
 **Base**
-:   The book as it really is, before any change. Every "what if" is measured against it.
+:   The fund as it really is, before any change. Every "what if" is measured against it.
 
 **Override**
-:   Changing **one cell**. A trader who believes a price is stale "corrects the mark" on one position.
-    See [Override a cell](../scenarios/override.md).
+:   Changing **one cell**. An analyst who thinks the price of an illiquid bond is stale marks it
+    down, or a PM tries "what if I bought 10,000 Initech?". See [Override a cell](../scenarios/override.md).
 
 **Shock**
-:   Changing **a whole column at once**, optionally only on some rows: "every Tech price −5%",
-    "every yield +25bp". A shock is an imagined market move. The engine has three kinds: `pct` (move by
-    a percentage), `add` (add an amount) and `mul` (multiply). See [Shock a column](../scenarios/shock.md).
+:   Changing **a whole column at once**, optionally only on some rows: "every tech stock −10%",
+    "every bond yield +25bp", "the dollar +5%". A shock is an imagined market move. The engine has
+    three kinds: `pct` (move by a percentage), `add` (add an amount) and `mul` (multiply). See
+    [Shock a column](../scenarios/shock.md).
 
 **Basis point (bp)**
-:   One hundredth of a percent: 0.01%, or `0.0001` as a fraction. Interest rates and yields move in small
-    steps, so people say "+25bp" rather than "+0.25%". "Yields +25bp" is the shock
+:   One hundredth of a percent: 0.01%, or `0.0001` as a fraction. Yields move in small steps, so
+    people say "+25bp" rather than "+0.25%". "Yields +25bp" is the shock
     `{"op": "add", "value": "0.0025"}` on the `yield` column.
 
 **Stress test**
-:   A large, deliberately painful set of shocks ("equities −20%, credit −5%, oil +30%") to see how
-    much the firm could lose in a crisis.
+:   A large, deliberately painful set of shocks ("equities −20%, credit −5%, government bonds +3%")
+    to see how the fund would behave in a crisis.
 
 **Sensitivity**
-:   A small shock (often +1bp or +1%) to measure how much a position reacts to one market variable.
+:   A small shock (often +1bp or +1%) to measure how much the fund reacts to one market variable.
 
 **Scenario**
-:   A named, saved list of overrides and shocks (the engine calls each one a **step**), so a
-    risk manager can build "Oil crisis 2026", share it, come back to it tomorrow, or copy it
+:   A named, saved list of overrides and shocks (the engine calls each one a **step**). A PM can
+    build "Global recession", share it with the risk team, come back to it tomorrow, or copy it
     (**fork** it) to try a variation. See [Saved scenarios and forks](../scenarios/saved-scenarios.md).
 
-**P&L and P&L impact**
-:   P&L means *profit and loss*. The **P&L impact** of a scenario is how much the book's value changes
-    compared with the base. In the engine you get it by running a [compare](../scenarios/compare.md), which adds
-    `__base`, `__delta` and `__pct` columns next to every number.
+**Impact, and relative impact**
+:   The **impact** of a scenario is how much the fund's value changes compared with the base. For
+    an active manager, the **relative** impact, the fund against its benchmark, matters as much. A
+    fund that falls 1% while its benchmark falls 3% has done its job. In the engine you get both
+    from a [compare](../scenarios/compare.md), which adds `__base`, `__delta` and `__pct` columns
+    next to every number.
 
-Here is a what-if end to end: *"what if the Equities desk's stocks all fall 10%?"*
+Here is a what-if end to end: *"what if tech stocks fall 10%?"*
 
 ```python exec="on"
 from book import engine, table
 
 result = engine().compare(
     {
-        "dataset": "positions",
+        "dataset": "holdings",
         "extensions": {
             "whatif": {
                 "steps": [
-                    {"kind": "shock", "column": "price", "op": "pct", "value": -10, "where": "desk == 'Equities'"}
+                    {
+                        "kind": "shock",
+                        "column": "price",
+                        "op": "pct",
+                        "value": -10,
+                        "where": "sector == 'Information Technology' and asset_class == 'Equity'",
+                    }
                 ]
             }
         },
         "query": {
-            "filter": "desk == 'Equities'",
-            "group_by": ["instrument"],
-            "measures": [{"name": "mv", "fn": "sum", "of": "price * quantity"}],
-            "sort": [{"by": "instrument"}],
+            "derive": [
+                {"name": "fund", "expr": "round(price * quantity * fx_rate, 2)"},
+                {"name": "bench", "expr": "round(price * bench_quantity * fx_rate, 2)"},
+            ],
+            "measures": [
+                {"name": "fund", "fn": "sum", "of": "fund"},
+                {"name": "bench", "fn": "sum", "of": "bench"},
+            ],
         },
     }
 )
@@ -214,18 +239,17 @@ print(table(result))
 
 How to read it:
 
-- `mv` is the value **after** the shock and `mv__base` is the value **before** it.
-- `mv__delta` is the P&L impact. The two **long** positions lose money.
-- **Wayne Financial is short** (−2,500 shares), so the fall *makes* money: its delta is positive. This is
-  the whole point of being short, and a good sanity check when you try your own shocks.
-- Stark Industries shows −9.9984% rather than −10% because 312.75 × 0.9 = 281.475 has to be rounded
-  back to a 2-decimal price. The engine never silently drops precision; see
-  [Numbers, types and nulls](../concepts/numbers-types-nulls.md).
+- `fund` is the NAV **after** the shock, `fund__base` is the NAV **before** it, and `fund__delta`
+  is the change in dollars.
+- `fund__pct` is about −0.96%, and `bench__pct` is about −3.08%. The fund loses much less than its
+  benchmark because it is underweight tech, so it **outperforms by about 2.1 points** in this
+  scenario. This relative view is how a PM reads every stress test.
 
 !!! warning "Shocks don't know finance"
-    The engine moves exactly the column you shock. Shocking `yield` up does **not** lower bond prices
-    by itself, and shocking `price` does not change `yield`. If you want linked moves, shock both
-    columns, or compute one from the other with a [formula column](../scenarios/formula.md).
+    The engine moves exactly the column you shock. Shocking `yield` up does **not** lower bond
+    prices by itself (duration would tell you by how much), and shocking `price` does not change
+    `yield`. If you want linked moves, shock both columns, or compute one from the other with a
+    [formula column](../scenarios/formula.md).
 
 ## 4. The people involved
 
@@ -233,31 +257,38 @@ Knowing who asks the questions makes the example requests easier to read:
 
 | Who | What they do with the engine |
 | --- | --- |
-| **Trader** | Owns positions on one desk; corrects marks (overrides) and checks their own exposure. |
-| **Risk manager** | Watches the whole book; builds stress-test scenarios, compares them with the base and checks limits. |
-| **Desk head** | Sees their desk's totals, subtotals and limit breaches. |
-| **Auditor / controller** | Needs to prove where a reported figure came from. See [Audit a number](../scenarios/audit.md). |
+| **Portfolio manager** | Owns the fund's positioning: weights, active weights, concentration. Runs what-ifs on trades and market moves, and compares the fund with its benchmark. |
+| **Equity analyst** | Covers a list of companies. Maintains target prices, and checks upside to target and how much of the fund sits in their names. |
+| **Credit analyst** | Covers bond issuers. Updates ratings and prices of hard-to-value bonds (overrides), and watches yield and duration. |
+| **Investment risk** | Builds stress-test scenarios, compares them with the base and the benchmark, and checks limits. |
+| **Investment compliance** | Checks rules such as concentration limits, and needs to prove where a reported figure came from. See [Audit a number](../scenarios/audit.md). |
+| **Client reporting** | Produces factsheets (top ten holdings, sector and currency breakdowns) and must never see analysts' internal views. |
 
-People are usually only allowed to see some of the book, for example just their own desk. This is
-**entitlements**, covered in [Access control](../scenarios/access-control.md).
+People are usually allowed to see only part of the data: an analyst sees their own coverage, and
+client reporting doesn't see target prices. This is **entitlements**, covered in
+[Access control](../scenarios/access-control.md).
 
 ## 5. Cheat sheet: finance word → what to type
 
 | You want… | Finance word | In a request |
 | --- | --- | --- |
-| Rows of the book | positions | the `positions` dataset, no `group_by` |
-| Value of each position | market value, notional | `"derive": [{"name": "mv", "expr": "price * quantity"}]` |
-| Totals per desk | exposure by desk | `"group_by": ["desk"]` + a `sum` measure |
-| Longs and shorts separately | long / short | `sum` measures with `"where": "quantity > 0"` / `"quantity < 0"` |
-| Size ignoring direction | gross | `abs(price * quantity)` |
-| Size-weighted yield | weighted average yield | `{"fn": "wavg", "of": "yield", "weight": "..."}` |
+| Rows of the fund | holdings | the `holdings` dataset, no `group_by` |
+| Only what the fund owns | holdings | `"filter": "quantity > 0"` |
+| Value of each holding in USD | market value | `"derive": [{"name": "mv", "expr": "round(price * quantity * fx_rate, 2)"}]` |
+| Totals per sector | exposure by sector | `"group_by": ["sector"]` + a `sum` measure |
+| Share of the fund | weight | `"post": [{"name": "weight", "expr": "mv / total(mv)"}]` |
+| Fund vs benchmark | active weight | two measures and `total()`; see [Weights and active weights](../scenarios/weights.md) |
+| Equities and bonds side by side | asset mix | `sum` measures with `"where": "asset_class == 'Equity'"` … |
+| Size-weighted yield | weighted average yield | `{"fn": "wavg", "of": "yield", "weight": "float(mv)"}` |
 | Totals and subtotals | subtotals | `"rollup": true` |
-| Desk × region matrix | pivot | `"pivot": {"on": ["region"]}` |
-| Desks over a limit | limit breach | `"having": "gross > 400000"` |
-| Fix one price | correct a mark | a [what-if](../whatif/index.md) step with `"kind": "override"` |
+| Asset class × currency matrix | currency exposure | `"pivot": {"on": ["currency"]}` |
+| Holdings over 10% | concentration limit | `"having": "weight_pct > 10"` |
+| Largest holdings first | top ten holdings | `"sort"` on the weight, `"page": {"limit": 10}` |
+| Fix one price | mark down a price | a [what-if](../whatif/index.md) step with `"kind": "override"` |
 | Move a whole column | shock | a [what-if](../whatif/index.md) step with `"kind": "shock"` |
 | +25bp on yields | basis points | `{"kind": "shock", "column": "yield", "op": "add", "value": "0.0025"}` |
-| Before vs after | P&L impact | `engine.compare(...)` or `POST /calc/compare` → `__delta` columns |
+| A stronger dollar | currency shock | a `pct` shock on `fx_rate` where `currency != 'USD'` |
+| Before vs after | impact | `engine.compare(...)` or `POST /calc/compare` → `__delta` columns |
 | Keep a what-if | scenario | [Saved scenarios](../scenarios/saved-scenarios.md) |
 
 The [Glossary](../glossary.md) has short definitions of all of these, plus the engine's own terms.
@@ -265,5 +296,7 @@ The [Glossary](../glossary.md) has short definitions of all of these, plus the e
 ## Next steps
 
 1. [Quick start](quickstart.md): run the same kind of requests yourself in Python.
-2. [Run the demo grid](run-the-demo.md): click around a live grid of 200,000 positions, no Python needed.
-3. [Scenarios by feature](../scenarios/index.md): one page per feature, each starting from a business question you can now read.
+2. [Run the demo grid](run-the-demo.md): click around a live grid of 200,000 holdings, no Python
+   needed.
+3. [Scenarios by feature](../scenarios/index.md): one page per feature, each starting from a
+   question a PM or analyst would ask, which you can now read.
