@@ -21,6 +21,7 @@ from pylibs_calc.errors import LimitExceeded, SpecError
 
 from .exprs import compile_expr, materialize
 from .logical import LEVEL, HiddenAgg, LogicalQuery, SortSpec
+from .validate import total_column
 
 TOTAL = "__total"
 PIDX = "__pidx"
@@ -101,9 +102,10 @@ def _levels(
     # Compute every aggregate's (masked) input once; each level then aggregates plain columns,
     # which keeps Polars on its fast group-by path and shares the work across rollup levels.
     rows = rows.with_columns(_inputs(plan))
+    grand = _grand_totals(rows, plan, deterministic) if plan.totals else None
     frames = []
     for depth in depths:
-        frame = _aggregate(rows, [*groups[:depth], *extra], plan, deterministic)
+        frame = _aggregate(rows, [*groups[:depth], *extra], plan, deterministic, grand)
         if plan.rollup:
             frame = frame.with_columns(pl.lit(depth, dtype=pl.Int64).alias(LEVEL))
         frames.append(frame)
@@ -136,14 +138,30 @@ def _inputs(plan: LogicalQuery) -> list[pl.Expr]:
     return exprs
 
 
+def _grand_totals(rows: pl.LazyFrame, plan: LogicalQuery, deterministic: bool) -> pl.LazyFrame:
+    """One row with what ``total(m)`` reads: each measure it names, over all the rows."""
+    needed = [m for m in plan.measures if m.name in plan.totals]
+    hidden = [_hidden(h, deterministic).alias(h.name) for m in needed for h in m.hidden]
+    return rows.select(hidden).select(
+        [materialize(m.final, m.ltype).alias(total_column(m.name)) for m in needed]
+    )
+
+
 def _aggregate(
-    rows: pl.LazyFrame, keys: list[str], plan: LogicalQuery, deterministic: bool
+    rows: pl.LazyFrame,
+    keys: list[str],
+    plan: LogicalQuery,
+    deterministic: bool,
+    grand: pl.LazyFrame | None,
 ) -> pl.LazyFrame:
+    """One level of groups; with ``grand``, its columns stay on every row for post and having."""
     hidden = [_hidden(h, deterministic).alias(h.name) for m in plan.measures for h in m.hidden]
     grouped = rows.group_by(keys).agg(hidden) if keys else rows.select(hidden)
     grouped = grouped.with_columns(
         [materialize(m.final, m.ltype).alias(m.name) for m in plan.measures]
     )
+    if grand is not None:
+        grouped = grouped.join(grand, how="cross")
     for p in plan.post:
         grouped = grouped.with_columns(materialize(p.expr, p.ltype).alias(p.name))
     return grouped.drop([h.name for m in plan.measures for h in m.hidden])

@@ -7,8 +7,8 @@ covers:
 # Shock a column
 
 !!! question "The business question"
-    *"What happens to my bond book if Tech names rally 5% and yields rise 25 basis points
-    across the board?"*
+    *"What if tech stocks fall 10% and bond yields rise 25 basis points? And separately, what if
+    the dollar strengthens 5%: how much is the fund's foreign money worth then?"*
 
 !!! info "What-if plugin"
     This feature comes from the [what-if plugin](../whatif/index.md) (`pylibs-calc-whatif`). Its
@@ -41,9 +41,10 @@ holds. It is the building block of stress tests and sensitivities.
 
 ## What to notice
 
-- ACME (97.25) and Initech (102.10) are the two Tech bonds. Their prices move by 5%: 97.25 × 1.05 = 102.1125, which rounds to **102.11**.
-- 102.10 × 1.05 = 107.205, which rounds to **107.20**. The rounding is half-to-even, so an exact half rounds to the even digit (see [Numbers, types and nulls](../concepts/numbers-types-nulls.md)).
-- Every yield is 25bp higher. Only the `price` and `yield` columns change, and no row is added or removed.
+- **The first table** shows the two tech stocks 10% lower: Cyberdyne Systems 185.40 → **166.86**, and Initech 64.30 × 0.9 = 57.87. The `where` also names the asset class, so ACME, a tech company's *bond*, keeps its price.
+- Every bond's yield is 25bp higher. Only the `price` and `yield` columns change, and no row is added or removed.
+- Decimal results are rounded half-to-even back to 2 places: 98.50 × 1.05 would be 103.425, which becomes **103.42** (see [Numbers, types and nulls](../concepts/numbers-types-nulls.md)).
+- **The second table** is a currency shock, run as a [compare](compare.md). A stronger dollar means each unit of a foreign currency buys fewer dollars, so the shock lowers `fx_rate` by 5% on every non-USD row. The fund loses 5% on its euro, sterling and yen holdings and nothing on its dollar holdings.
 
 ## The operations
 
@@ -58,6 +59,6 @@ holds. It is the building block of stress tests and sensitivities.
 ## Gotchas
 
 - **Decimal columns** are rounded half-to-even back to the column's scale after the shock, so a 2-decimal price stays 2-decimal.
-- **Integer columns** (such as `quantity`) refuse a shock with a fractional result: `422 needs_rounding`. Add `"round": true` to round half-to-even instead. For example, −500 × 1.033 = −516.5 becomes −516.
+- **Integer columns** (such as `quantity`) refuse a shock with a fractional result: `422 needs_rounding`. Add `"round": true` to round half-to-even instead. For example, 2,500 × 1.033 = 2,582.5 becomes 2,582.
 - Shocks and overrides apply **in the order they are written**. A shock after an override moves the overridden value.
 - Only **editable** columns can be shocked (`422 not_editable` otherwise).

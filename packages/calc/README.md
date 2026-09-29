@@ -1,13 +1,13 @@
 # pylibs-calc
 
-An embeddable **calculation engine** on [Polars](https://pola.rs), for the grids that finance
-teams slice, edit and aggregate, **extensible with plugins**. It is a library, not a service. You
+An embeddable **calculation engine** on [Polars](https://pola.rs), for the portfolio grids that
+fund managers and research analysts slice, edit and aggregate, **extensible with plugins**. It is a library, not a service. You
 embed it in your own FastAPI (or any Python) service.
 
 The **core engine** does what nearly every analytics service needs:
 
 - **Rows:** filters and derived columns.
-- **Aggregation:** group-by with measures (including filtered measures and weighted averages), ratios computed after aggregation, subtotals (rollup) and pivots.
+- **Aggregation:** group-by with measures (including filtered measures and weighted averages), ratios computed after aggregation, portfolio and active weights (`total()`), subtotals (rollup) and pivots.
 - **Comparison:** the same query on two sides (data versions, or any plugin's transform), with deltas.
 - **Exact decimals:** exact `Decimal` arithmetic with explicit rounding rules.
 - **Reproducible results:** a fingerprint on every result, and a pure-Python reference evaluator to check the engine against.
@@ -25,7 +25,8 @@ pip install pylibs-calc-whatif           # + the what-if plugin
 ```
 
 **Documentation:** the [docs site](https://github.com/sanjaysharmagwl/py-libs/tree/master/docs/calc)
-has a runnable, finance-flavoured scenario for every feature, a QA guide and the API reference.
+has a runnable scenario for every feature, told from a portfolio manager's or analyst's side (a
+fund against its benchmark), an investment primer, a QA guide and the API reference.
 From a clone, `make install && make docs-serve` serves it locally.
 
 ## Quick start
@@ -35,23 +36,24 @@ import polars as pl
 from pylibs_calc import Catalog, CalcEngine
 
 catalog = Catalog()
-catalog.register_frame("positions", df, key_columns=["position_id"], version="2026-09-26")
+catalog.register_frame("holdings", df, key_columns=["security_id"], version="2026-09-26")
 engine = CalcEngine(catalog)  # plugins=[...] to add analyses
 
 result = engine.run(
     {
-        "dataset": "positions",
+        "dataset": "holdings",
         "query": {
-            "filter": "region == 'EMEA' and quantity != 0",
-            "derive": [{"name": "notional", "expr": "price * quantity"}],
-            "group_by": ["desk", "sector"],
+            "filter": "quantity > 0",
+            "derive": [{"name": "mv", "expr": "round(price * quantity * fx_rate, 2)"}],
+            "group_by": ["asset_class", "sector"],
             "rollup": True,
             "measures": [
-                {"name": "notional", "fn": "sum", "of": "notional"},
-                {"name": "yield", "fn": "wavg", "of": "yield", "weight": "abs(float(notional))"},
-                {"name": "positions", "fn": "count_rows"},
+                {"name": "mv", "fn": "sum", "of": "mv"},
+                {"name": "yield", "fn": "wavg", "of": "yield", "weight": "float(mv)"},
+                {"name": "holdings", "fn": "count_rows"},
             ],
-            "sort": [{"by": "desk"}],
+            "post": [{"name": "weight", "expr": "mv / total(mv)"}],  # share of the fund
+            "sort": [{"by": "asset_class"}],
             "page": {"offset": 0, "limit": 100},
         },
     }
@@ -84,7 +86,7 @@ Registration also normalizes the data:
 from pylibs_calc_whatif import InMemoryScenarioStore, WhatIfPlugin
 
 engine = CalcEngine(catalog, plugins=[WhatIfPlugin(store=InMemoryScenarioStore())])
-engine.run({"dataset": "positions", "extensions": {"whatif": {"steps": [...]}}, "query": {...}})
+engine.run({"dataset": "holdings", "extensions": {"whatif": {"steps": [...]}}, "query": {...}})
 ```
 
 | Extension point | Registered with | Used as |
@@ -132,17 +134,22 @@ The order of evaluation is:
 | `wavg` | `sum(of * weight) / sum(weight)` over rows where both are present |
 
 Any measure can have a `where`, which works like SQL `FILTER (WHERE ...)`. Ratios belong in
-`post`, for example `{"name": "avg_px", "expr": "notional / quantity"}`. Post expressions and
+`post`, for example `{"name": "upside", "expr": "target_mv / mv - 1"}`. Post expressions and
 `wavg` are computed from sums at every level, so a ratio is always a ratio of sums, never an
 average of ratios.
+
+Weights: in `post` and `having`, `total(m)` is the measure `m` over every row the query sees
+(after `filter`, before `having`, rollup, pivot and paging). `mv / total(mv)` is a portfolio
+weight at every level, and with two measures (fund and benchmark) the difference of their
+weights is the active weight.
 
 Subtotals: with `rollup`, every level is computed from the base rows. The output has a
 `__level` column (0 is the grand total), and subtotal rows sort directly after their details.
 
-Plugins can add more measure functions (a median, a VaR quantile). Like the built-ins, they are
+Plugins can add more measure functions (a median, a quantile). Like the built-ins, they are
 recomputed from the rows at every level.
 
-Pivots: `pivot: {"on": ["region"], "totals": true}` creates columns named `EMEA_notional` and
+Pivots: `pivot: {"on": ["currency"], "totals": true}` creates columns named `EUR_mv` and
 so on. The pivot values are the sorted distinct values, unless you pass an explicit `domain`.
 
 ### Formula language
@@ -198,11 +205,11 @@ scenario, or two scenarios.
 ```python
 engine.compare(
     {
-        "dataset": {"id": "positions", "version": "2026-09-26"},
+        "dataset": {"id": "holdings", "version": "2026-09-26"},
         "base": {"version": "2026-09-25"},
         "query": {
-            "group_by": ["desk"],
-            "measures": [{"name": "mv", "fn": "sum", "of": "price * quantity"}],
+            "group_by": ["sector"],
+            "measures": [{"name": "mv", "fn": "sum", "of": "price * quantity * fx_rate"}],
             "sort": [{"by": "mv__delta", "desc": True}],
         },
     }
@@ -225,7 +232,7 @@ app.include_router(
         dependencies=[Depends(auth)],
         context_resolver=lambda req: CalcContext(
             principal=req.state.user,
-            row_filter=f"desk in {tuple(req.state.desks)!r}",
+            row_filter=f"analyst in {tuple(req.state.coverage)!r}",
             allowed_columns=req.state.columns,
         ),
     )
@@ -277,7 +284,7 @@ const gridOptions = {
   rowModelType: 'serverSide',
   serverSideDatasource: { getRows: p => fetch('/calc/aggrid/rows', {method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({dataset: 'positions', extensions, request: p.request})})
+      body: JSON.stringify({dataset: 'holdings', extensions, request: p.request})})
     .then(r => r.json()).then(d => p.success(d)).catch(() => p.fail()) },
   getRowId: p => p.data.__row_id,
   getServerSideGroupKey: d => d.__group_key,   // typed keys: nulls, dates and decimals round-trip
@@ -323,7 +330,7 @@ panic that the executor now works around.
 
 ## Performance and deployment
 
-Measured with [benchmarks/bench.py](benchmarks/bench.py) on 10 million positions,
+Measured with [benchmarks/bench.py](benchmarks/bench.py) on 10 million rows,
 `POLARS_MAX_THREADS=4`, on an Apple M1. Times are p50 / p95 in milliseconds:
 
 | Request | String dimensions | Categorical dimensions |

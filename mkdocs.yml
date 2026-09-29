@@ -93,7 +93,7 @@ nav:
   - pylibs-calc:
       - calc/index.md
       - Getting started:
-          - "Finance primer: start here": calc/getting-started/finance-primer.md
+          - "Investment primer: start here": calc/getting-started/finance-primer.md
           - Install: calc/getting-started/install.md
           - Quick start: calc/getting-started/quickstart.md
           - Run the demo grid: calc/getting-started/run-the-demo.md
@@ -111,6 +111,7 @@ nav:
           - Measures: calc/scenarios/measures.md
           - Filtered measures: calc/scenarios/filtered-measures.md
           - Ratios after aggregation: calc/scenarios/post-ratios.md
+          - Weights and active weights: calc/scenarios/weights.md
           - Having: calc/scenarios/having.md
           - Subtotals (rollup): calc/scenarios/rollup.md
           - Pivot: calc/scenarios/pivot.md

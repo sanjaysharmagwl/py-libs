@@ -40,16 +40,16 @@ What-if changes go in the request's `extensions.whatif` block:
 from book import engine, table
 
 result = engine().run({
-    "dataset": "positions",
+    "dataset": "holdings",
     "extensions": {
         "whatif": {
             "steps": [
-                {"kind": "shock", "column": "price", "op": "pct", "value": -2, "where": "desk == 'Rates'"},
-                {"kind": "formula", "name": "notional", "expr": "price * quantity"},
+                {"kind": "shock", "column": "price", "op": "pct", "value": -2, "where": "sector == 'Government'"},
+                {"kind": "formula", "name": "mv", "expr": "round(price * quantity * fx_rate, 2)"},
             ]
         }
     },
-    "query": {"filter": "desk == 'Rates'", "select": ["position_id", "price", "notional"]},
+    "query": {"filter": "sector == 'Government'", "select": ["security_id", "security", "price", "mv"]},
 })
 print(table(result))
 print(f"\n`meta.extensions`: `{result.meta.extensions}`")

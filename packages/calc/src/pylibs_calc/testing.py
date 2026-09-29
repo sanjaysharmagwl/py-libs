@@ -189,7 +189,10 @@ def queries(draw: st.DrawFn) -> dict[str, Any]:
         query["group_by"] = group_by
         query["measures"] = draw(measures())
         if draw(st.booleans()):
-            query["post"] = [{"name": "ratio", "expr": "float(m0) / 3"}]
+            ratio = draw(
+                st.sampled_from(["float(m0) / 3", "float(m0) / float(total(m0))", "total(m0) - m0"])
+            )
+            query["post"] = [{"name": "ratio", "expr": ratio}]
         if shape == "rollup":
             query["rollup"] = True
         elif shape == "pivot":
@@ -198,7 +201,7 @@ def queries(draw: st.DrawFn) -> dict[str, Any]:
                 group_by.remove(on)
             query["pivot"] = {"on": [on], "totals": draw(st.booleans())}
         elif draw(st.booleans()):
-            query["having"] = "m0 is not None"
+            query["having"] = draw(st.sampled_from(["m0 is not None", "total(m0) is not None"]))
         if shape != "rollup" and group_by:
             query["sort"] = [{"by": group_by[0], "desc": draw(st.booleans())}]
     return query

@@ -61,8 +61,8 @@ grepping whole packages:
 local only for now). `docs/contributing.md` is the full guide; the rules that matter:
 
 - **Examples run.** Scenario pages include `docs/examples/calc/NN_*.py` via snippets and execute
-  them with markdown-exec, so result tables are real. The scripts share `book.py` (a twelve-row
-  position book) and run under pytest (`docs/examples` is in `testpaths`), as do the QA golden
+  them with markdown-exec, so result tables are real. The scripts share `book.py` (a fictional
+  fund next to its benchmark, fourteen securities) and run under pytest (`docs/examples` is in `testpaths`), as do the QA golden
   cases (`golden.py`; re-record with `--update` only for intended behaviour changes).
 - **Graph sync.** `scripts/docs_from_graph.py` reads `graphify-out/graph.json` and writes
   `docs/calc/reference/generated/` (never edit by hand). Hand-written pages list the source files

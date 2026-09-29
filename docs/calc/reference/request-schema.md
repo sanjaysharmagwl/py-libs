@@ -42,7 +42,7 @@ The same structures are pydantic models, importable from `pylibs_calc` (and, for
 | `query` | `Query` |
 | `query.derive[]` | `Derive` |
 | `query.measures[]` | `Measure` |
-| `query.post[]` | `PostAgg` |
+| `query.post[]` | `PostAgg` (its `expr`, and `having`, may use `total(measure)`: see [Weights](../scenarios/weights.md)) |
 | `query.pivot` | `Pivot` |
 | `query.sort[]` | `SortKey` |
 | `query.page` | `Page` |
@@ -52,14 +52,14 @@ The same structures are pydantic models, importable from `pylibs_calc` (and, for
 ## Minimal requests
 
 ```json
-{"dataset": "positions"}
+{"dataset": "holdings"}
 ```
 
 This returns every row (up to `max_unpaged_rows`).
 
 ```json
 {
-  "dataset": {"id": "positions", "version": "2026-09-30"},
+  "dataset": {"id": "holdings", "version": "2026-09-30"},
   "extensions": {"whatif": {"scenario": {"id": "…", "version": 3}}}
 }
 ```
@@ -70,7 +70,7 @@ An `extensions` key names a plugin transform; an engine without that plugin answ
 
 ## Versions
 
-The current `spec_version` is `2`. Older requests are upgraded when they are parsed, so they keep working and keep their meaning (and their fingerprints).
+The current `spec_version` is `2`. Older requests are upgraded when they are parsed, so they keep working and keep their meaning (and their fingerprints). New built-in functions, such as `total()`, are additions within version 2: a request that doesn't use them means exactly what it meant before.
 
 | Version 1 | Version 2 |
 | --- | --- |

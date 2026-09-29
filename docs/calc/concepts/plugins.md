@@ -9,8 +9,8 @@ covers:
 
 `pylibs-calc` is split in two layers:
 
-- **The core engine** does what nearly every analytics service needs: datasets and versions, filters, derived columns, group-by with filtered and weighted measures, ratios after aggregation, `having`, subtotals, pivots, sorting and paging, compare, exact decimals, caching, entitlements, fingerprints and the reference evaluator.
-- **Plugins** build analyses on top of it. What-if analysis (overrides, shocks, formula columns, saved scenarios) is the first one: the [`pylibs-calc-whatif`](../whatif/index.md) package. Sensitivity ladders, goal-seek, period-over-period views or custom risk measures are meant to be plugins too.
+- **The core engine** does what nearly every portfolio analytics service needs: datasets and versions, filters, derived columns, group-by with filtered and weighted measures, ratios and weights after aggregation (`total()`), `having`, subtotals, pivots, sorting and paging, compare, exact decimals, caching, entitlements, fingerprints and the reference evaluator.
+- **Plugins** build analyses on top of it. What-if analysis (overrides, shocks, formula columns, saved scenarios) is the first one: the [`pylibs-calc-whatif`](../whatif/index.md) package. Share class currency views, FX and duration ladders, goal-seek ("how much must I buy to be neutral?"), period-over-period views or custom risk measures are meant to be plugins too.
 
 ```mermaid
 flowchart TB
@@ -45,7 +45,7 @@ from pylibs_calc import CalcEngine
 from pylibs_calc_whatif import InMemoryScenarioStore, WhatIfPlugin
 
 engine = CalcEngine(catalog, plugins=[WhatIfPlugin(store=InMemoryScenarioStore())])
-engine.plugin(WhatIfPlugin).scenarios.create("positions", "tech rally")
+engine.plugin(WhatIfPlugin).scenarios.create("holdings", "AI rally")
 ```
 
 - Each engine has its own plugins: a function or transform exists only in engines that installed its plugin.
@@ -60,7 +60,7 @@ engine.plugin(WhatIfPlugin).scenarios.create("positions", "tech rally")
 | [Functions](#functions-and-aggregates) | `registry.add_function(FunctionDef)` | a function in any formula | `bps(yield)` |
 | [Aggregates](#functions-and-aggregates) | `registry.add_aggregate(AggregateDef)` | a measure's `fn` | `{"fn": "median", "of": "price"}` |
 | [Transforms](#transforms) | `registry.add_transform(TransformDef)` | a block under `extensions` | `{"extensions": {"whatif": {...}}}` |
-| [Operations](#operations) | `registry.add_operation(OperationDef)` | `engine.call(name, request)` | a sensitivity ladder |
+| [Operations](#operations) | `registry.add_operation(OperationDef)` | `engine.call(name, request)` | an FX sensitivity ladder |
 | [HTTP routes](#http-routes) | `registry.add_routes(hook)` | routes on the FastAPI router | `/scenarios/...` |
 
 [Write a plugin](../extending/write-a-plugin.md) builds one of each, step by step.
@@ -77,9 +77,9 @@ A transform changes the dataset before the query runs: it can change values, add
 
 ```json
 {
-  "dataset": "positions",
-  "extensions": {"whatif": {"steps": [{"kind": "shock", "column": "price", "op": "pct", "value": 5}]}},
-  "query": {"group_by": ["desk"], "measures": [{"name": "mv", "fn": "sum", "of": "price * quantity"}]}
+  "dataset": "holdings",
+  "extensions": {"whatif": {"steps": [{"kind": "shock", "column": "price", "op": "pct", "value": -10}]}},
+  "query": {"group_by": ["sector"], "measures": [{"name": "mv", "fn": "sum", "of": "price * quantity * fx_rate"}]}
 }
 ```
 
@@ -113,7 +113,7 @@ Transforms run **after** the caller's row filter and column restrictions, in the
 
 ### Operations
 
-An operation is a new call on the engine, for analyses that are more than one query: a sensitivity ladder, a goal-seek, a multi-period roll-forward. It gets the **`Kernel`**, the engine's machinery with a stable interface:
+An operation is a new call on the engine, for analyses that are more than one query: an FX or duration ladder, a goal-seek ("how much Initech to buy to be neutral on tech?"), a multi-period roll-forward. It gets the **`Kernel`**, the engine's machinery with a stable interface:
 
 | `Kernel` method | Does |
 | --- | --- |

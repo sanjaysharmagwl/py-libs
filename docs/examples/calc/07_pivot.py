@@ -1,15 +1,17 @@
-"""Pivot: a desk x region exposure matrix, with row totals."""
+"""Pivot: currency exposure by asset class, as weights in the fund, with row totals."""
 
 from book import engine, table
 
 REQUEST = {
-    "dataset": "positions",
+    "dataset": "holdings",
     "query": {
-        "derive": [{"name": "notional", "expr": "price * quantity"}],
-        "group_by": ["desk"],
-        "measures": [{"name": "notional", "fn": "sum", "of": "notional"}],
-        "pivot": {"on": ["region"], "totals": True},
-        "sort": [{"by": "desk"}],
+        "filter": "quantity > 0",
+        "derive": [{"name": "mv", "expr": "round(price * quantity * fx_rate, 2)"}],
+        "group_by": ["asset_class"],
+        "measures": [{"name": "mv", "fn": "sum", "of": "mv"}],
+        "post": [{"name": "weight_pct", "expr": "round(100 * mv / total(mv), 2)"}],
+        "pivot": {"on": ["currency"], "values": ["weight_pct"], "totals": True},
+        "sort": [{"by": "asset_class"}],
     },
 }
 

@@ -5,7 +5,7 @@ Steps are what-if changes that keep every row of the dataset.
 A scenario is an ordered log of these steps over a pinned dataset version. Value changes
 (:class:`Override`, :class:`Shock`) apply in log order; :class:`Formula` columns are evaluated
 after all value changes, in dependency order, so a later override of ``price`` still flows into
-``notional = price * qty``.
+``mv = price * quantity * fx_rate``.
 """
 
 from __future__ import annotations

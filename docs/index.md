@@ -4,7 +4,7 @@ A monorepo of independently versioned Python packages, published to PyPI.
 
 | Package | What it is | Docs |
 | --- | --- | --- |
-| **`pylibs-calc`** | An embeddable calculation engine on Polars, for finance grids, extensible with plugins | [pylibs-calc](calc/index.md) |
+| **`pylibs-calc`** | An embeddable calculation engine on Polars, for the portfolio grids of fund managers and research analysts, extensible with plugins | [pylibs-calc](calc/index.md) |
 | **`pylibs-calc-whatif`** | What-if analysis for `pylibs-calc`, as a plugin: overrides, shocks, formulas, saved scenarios | [What-if plugin](calc/whatif/index.md) |
 | `pylibs-core` | Small core utilities shared across packages | [pylibs-core](packages/core.md) |
 | `pylibs-utils` | Higher-level helpers built on `pylibs-core` | [pylibs-utils](packages/utils.md) |

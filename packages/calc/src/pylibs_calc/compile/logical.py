@@ -24,7 +24,7 @@ from pylibs_calc.dtypes import (
     common_type,
 )
 from pylibs_calc.errors import LimitExceeded, SpecError, join_path
-from pylibs_calc.spec.expr import Binary, ColRef, IsNull, Logic, Node, columns
+from pylibs_calc.spec.expr import Binary, ColRef, Func, IsNull, Logic, Node, columns, walk
 from pylibs_calc.spec.query import BUILTIN_AGGS, Page, Query
 
 from .validate import Budget, Typed, check, check_predicate
@@ -135,6 +135,7 @@ class LogicalQuery:
     page: Page | None
     output: dict[str, LType]
     value_types: dict[str, LType] = field(default_factory=dict)
+    totals: tuple[str, ...] = ()  # measures read by total() in post or having
 
     @property
     def value_names(self) -> tuple[str, ...]:
@@ -266,6 +267,7 @@ def plan_query(
         measures.append(plan)
         output[m.name] = plan.ltype
 
+    totals = {m.name: m.ltype for m in measures}
     post = []
     for i, p in enumerate(query.post):
         ppath = join_path(path, "post", i)
@@ -274,7 +276,9 @@ def plan_query(
             raise SpecError(
                 f"{p.name} is already an output column", code="name_conflict", path=ppath
             )
-        typed = check(p.expr, output, cfg, join_path(ppath, "expr"), budget(), functions=fns)
+        typed = check(
+            p.expr, output, cfg, join_path(ppath, "expr"), budget(), functions=fns, totals=totals
+        )
         ltype = materializable(typed, join_path(ppath, "expr"))
         post.append(PostPlan(p.name, typed, ltype))
         output[p.name] = ltype
@@ -282,8 +286,15 @@ def plan_query(
     having = None
     if query.having is not None:
         having = check_predicate(
-            query.having, output, cfg, join_path(path, "having"), budget(), functions=fns
+            query.having,
+            output,
+            cfg,
+            join_path(path, "having"),
+            budget(),
+            functions=fns,
+            totals=totals,
         )
+    used = _totals_used([*(p.expr for p in query.post), query.having])
 
     value_types = {m.name: m.ltype for m in measures} | {p.name: p.ltype for p in post}
     pivot = None
@@ -315,7 +326,20 @@ def plan_query(
         page=query.page,
         output=output,
         value_types=value_types,
+        totals=tuple(m.name for m in measures if m.name in used),
     )
+
+
+def _totals_used(exprs: Sequence[Node | None]) -> set[str]:
+    """The measures named by ``total()`` calls (already type-checked)."""
+    used = set()
+    for expr in exprs:
+        if expr is None:
+            continue
+        for n in walk(expr):
+            if isinstance(n, Func) and n.name == "total" and isinstance(n.args[0], ColRef):
+                used.add(n.args[0].name)
+    return used
 
 
 def _unknown(name: str, path: str, env: Mapping[str, LType]) -> SpecError:

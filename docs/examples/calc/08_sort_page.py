@@ -1,13 +1,16 @@
-"""Sort and page: the five largest positions by absolute market value, then the next page."""
+"""Sort and page: the fund's top five holdings by weight, factsheet style, then the next page."""
 
 from book import engine, table
 
 REQUEST = {
-    "dataset": "positions",
+    "dataset": "holdings",
     "query": {
-        "derive": [{"name": "abs_mv", "expr": "abs(price * quantity)"}],
-        "select": ["position_id", "instrument", "desk", "abs_mv"],
-        "sort": [{"by": "abs_mv", "desc": True}],
+        "filter": "quantity > 0",
+        "derive": [{"name": "mv", "expr": "round(price * quantity * fx_rate, 2)"}],
+        "group_by": ["security", "asset_class"],
+        "measures": [{"name": "mv", "fn": "sum", "of": "mv"}],
+        "post": [{"name": "weight_pct", "expr": "round(100 * mv / total(mv), 2)"}],
+        "sort": [{"by": "weight_pct", "desc": True}],
         "page": {"offset": 0, "limit": 5},
     },
 }

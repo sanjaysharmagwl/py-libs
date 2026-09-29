@@ -99,3 +99,35 @@ def test_row_level_compare_and_zero_base(engine: CalcEngine) -> None:
         "qty__pct": None,  # a zero base has no percentage change
     }
     assert rows[1]["id"] == 2 and rows[1]["qty__delta"] == 5
+
+
+def test_shock_moves_weights_through_total(engine: CalcEngine) -> None:
+    """total() sees the shocked rows, so a sector's weight moves as well as its value."""
+    result = engine.compare(
+        {
+            "dataset": "pos",
+            "extensions": {
+                "whatif": {
+                    "steps": [
+                        {
+                            "kind": "shock",
+                            "column": "price",
+                            "op": "pct",
+                            "value": -50,
+                            "where": "sector == 'Energy'",
+                        }
+                    ]
+                }
+            },
+            "query": {
+                "group_by": ["sector"],
+                "measures": [{"name": "mv", "fn": "sum", "of": "price * qty"}],
+                "post": [{"name": "w", "expr": "float(mv) / float(total(mv))"}],
+            },
+        }
+    )
+    rows = {r["sector"]: r for r in result.frame.to_dicts()}
+    assert rows["Energy"]["w__base"] == pytest.approx(3004 / 8106.5)
+    assert rows["Energy"]["w"] == pytest.approx(1502 / 6604.5)
+    assert rows["Tech"]["mv__delta"] == 0 and rows["Tech"]["w__delta"] > 0
+    assert sum(r["w"] for r in rows.values()) == pytest.approx(1.0)

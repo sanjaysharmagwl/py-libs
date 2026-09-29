@@ -5,7 +5,7 @@ from book import engine
 from pylibs_calc.verify import verify
 
 REQUEST = {
-    "dataset": "positions",
+    "dataset": "holdings",
     "extensions": {
         "whatif": {
             "steps": [
@@ -13,17 +13,29 @@ REQUEST = {
                     "kind": "shock",
                     "column": "price",
                     "op": "pct",
-                    "value": 5,
-                    "where": "sector == 'Tech'",
+                    "value": -10,
+                    "where": "sector == 'Information Technology' and asset_class == 'Equity'",
                 }
             ]
         }
     },
     "query": {
-        "derive": [{"name": "notional", "expr": "price * quantity"}],
-        "group_by": ["desk"],
-        "measures": [{"name": "notional", "fn": "sum", "of": "notional"}],
-        "sort": [{"by": "desk"}],
+        "derive": [
+            {"name": "mv", "expr": "round(price * quantity * fx_rate, 2)"},
+            {"name": "bench_mv", "expr": "round(price * bench_quantity * fx_rate, 2)"},
+        ],
+        "group_by": ["sector"],
+        "measures": [
+            {"name": "fund", "fn": "sum", "of": "mv"},
+            {"name": "bench", "fn": "sum", "of": "bench_mv"},
+        ],
+        "post": [
+            {
+                "name": "active_pct",
+                "expr": "round(100 * (fund / total(fund) - bench / total(bench)), 2)",
+            }
+        ],
+        "sort": [{"by": "sector"}],
     },
     "options": {"audit": True},
 }
@@ -31,6 +43,8 @@ REQUEST = {
 calc = engine()
 result = calc.run(REQUEST)
 meta = result.meta
+it = next(r for r in result.frame.to_dicts() if r["sector"] == "Information Technology")
+print(f"- **active weight in IT after the shock**: {it['active_pct']}%")
 print(f"- **fingerprint**: `{meta.fingerprint}`")
 print(f"- **dataset**: `{meta.dataset.id}` version `{meta.dataset.version}`")
 print(f"- **library versions**: `{meta.versions}`")

@@ -32,7 +32,7 @@ flowchart TB
 | 1 | `filter` | rows |
 | 2 | `derive` | rows (new columns, in the order written) |
 | 3 | `group_by` + `measures` | rows → groups |
-| 4 | `post` | groups (ratios over measures) |
+| 4 | `post` | groups (ratios over measures, and weights: `total(m)` is `m` over every row stages 1–2 kept) |
 | 5 | `having` | groups |
 | 6 | `rollup` | adds subtotal rows |
 | 7 | `pivot` | spreads measures across columns |
@@ -45,5 +45,6 @@ Without `group_by` or `measures`, stages 3–7 are skipped and the query returns
 
 - **Entitlements come first.** A `row_filter` is applied before anything else, so a total can never include rows the caller may not see.
 - **Plugins see the caller's data only.** Transforms run after the entitlements, so a plugin can't reintroduce hidden rows or columns.
-- **Formulas see final values.** A price override still changes a `notional` formula, even when the override is appended later or sent as a one-off step on top of a saved scenario. See [Formula columns](../scenarios/formula.md).
-- **`filter` comes before aggregation, `having` after it.** To keep only large positions, use `filter`. To keep only large desks, use `having`.
+- **Formulas see final values.** A price override still changes an `mv` (market value) formula, even when the override is appended later or sent as a one-off step on top of a saved scenario. See [Formula columns](../scenarios/formula.md).
+- **`filter` comes before aggregation, `having` after it.** To keep only large holdings, use `filter`. To keep only large sectors, use `having`.
+- **Weights see the whole query, not the page.** `total()` is taken after `filter` and before `having`, `rollup`, `pivot` and `page`, so a weight is always a share of everything the query kept. See [Weights and active weights](../scenarios/weights.md).

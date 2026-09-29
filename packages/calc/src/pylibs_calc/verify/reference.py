@@ -36,9 +36,9 @@ from pylibs_calc.spec.expr import (
 )
 
 from ..compile.compare import ComparePlan
-from ..compile.logical import LEVEL, HiddenAgg, LogicalQuery, SortSpec
+from ..compile.logical import LEVEL, HiddenAgg, LogicalQuery, MeasurePlan, SortSpec
 from ..compile.query import pivot_label
-from ..compile.validate import Typed
+from ..compile.validate import Typed, total_column
 
 Row = dict[str, Any]
 _WIDE = Context(prec=400)
@@ -182,6 +182,10 @@ def _binary(t: Typed, node: Binary, row: Mapping[str, Any]) -> Any:
 def _func(t: Typed, node: Func, row: Mapping[str, Any]) -> Any:
     if t.impl is not None:
         return _plugin_func(t, row)
+    if node.name == "total":
+        measure = node.args[0]
+        assert isinstance(measure, ColRef)
+        return row[total_column(measure.name)]
     name = node.name
     args = t.args
     if name in ("min", "max", "coalesce"):
@@ -361,6 +365,7 @@ def aggregate_levels(
 ) -> list[Row]:
     groups = list(plan.group_by)
     depths = range(len(groups), -1, -1) if plan.rollup else [len(groups)]
+    grand = grand_totals(rows, plan)
     out: list[Row] = []
     for depth in depths:
         keys = [*groups[:depth], *extra]
@@ -373,8 +378,8 @@ def aggregate_levels(
             result: Row = dict.fromkeys(groups)
             result.update(zip(keys, key, strict=True))
             for m in plan.measures:
-                hidden = {h.name: hidden_agg(h, members) for h in m.hidden}
-                result[m.name] = convert(evaluate(m.final, hidden), m.final.ltype, m.ltype)
+                result[m.name] = measure_value(m, members)
+            result.update(grand)
             for p in plan.post:
                 result[p.name] = convert(evaluate(p.expr, result), p.expr.ltype, p.ltype)
             if plan.rollup:
@@ -384,6 +389,17 @@ def aggregate_levels(
             columns = [*groups, *([LEVEL] if plan.rollup else []), *extra, *plan.value_names]
             out.append({c: result[c] for c in columns})
     return out
+
+
+def measure_value(m: MeasurePlan, rows: Sequence[Row]) -> Any:
+    hidden = {h.name: hidden_agg(h, rows) for h in m.hidden}
+    return convert(evaluate(m.final, hidden), m.final.ltype, m.ltype)
+
+
+def grand_totals(rows: Sequence[Row], plan: LogicalQuery) -> Row:
+    """What ``total(m)`` reads: each measure it names, over every row the query sees."""
+    needed = [m for m in plan.measures if m.name in plan.totals]
+    return {total_column(m.name): measure_value(m, rows) for m in needed}
 
 
 def hidden_agg(h: HiddenAgg, rows: Sequence[Row]) -> Any:

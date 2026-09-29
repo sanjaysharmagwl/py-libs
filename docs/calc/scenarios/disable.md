@@ -7,8 +7,8 @@ covers:
 # Disable a step
 
 !!! question "The business question"
-    *"The −10% credit shock in our stress scenario is too harsh. Take it out, but keep a record
-    that it was there."*
+    *"The −20% equity shock in our 'global recession' stress scenario is too harsh. Take it out,
+    but keep a record that it was there."*
 
 !!! info "What-if plugin"
     This feature comes from the [what-if plugin](../whatif/index.md) (`pylibs-calc-whatif`). Its
@@ -30,9 +30,9 @@ Scenarios are **append-only**, so you never edit or delete a step. A **disable**
 
 ## What to notice
 
-- The Rates prices are 3% lower (98.50 → 95.54), and the Credit prices are back to their base values, because step 1 is disabled.
-- The log still shows all three steps, who made them, and in what order.
-- The same thing over HTTP is a `POST /calc/scenarios/{id}/steps` with body `{"steps": [{"kind": "disable", "seq": 1}], "expected_version": 2}`.
+- The equity value is back to its base value, because step 1 is disabled. Steps 2 and 3 still apply: corporate bonds −5% and government bonds +3% (a "flight to quality"). Together they leave the fund's bonds about 1.1% higher.
+- The log still shows all four steps, who made them, and in what order.
+- The same thing over HTTP is a `POST /calc/scenarios/{id}/steps` with body `{"steps": [{"kind": "disable", "seq": 1}], "expected_version": 3}`.
 
 ## Gotchas
 

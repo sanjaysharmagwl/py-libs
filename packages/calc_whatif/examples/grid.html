@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>pylibs-calc demo</title>
+  <title>pylibs-calc fund demo</title>
   <!-- AG Grid's server-side row model is an Enterprise feature; without a licence key the grid
        shows a watermark, which is fine for evaluation. -->
   <script src="https://cdn.jsdelivr.net/npm/ag-grid-enterprise@36.2.0/dist/ag-grid-enterprise.min.js"></script>
@@ -22,9 +22,9 @@
 </head>
 <body>
   <header>
-    <h1>pylibs-calc · what-if grid</h1>
+    <h1>pylibs-calc · fund what-if grid</h1>
     <button id="new">New scenario</button>
-    <button id="shock">Shock Tech price +5%</button>
+    <button id="shock">Shock IT stocks −10%</button>
     <button id="base">View base data</button>
     <span id="status"></span>
     <span id="error"></span>
@@ -32,7 +32,7 @@
   <div id="grid"></div>
   <table id="compare"></table>
 <script>
-const DATASET = "positions";
+const DATASET = "holdings";
 const state = { scenario: null, showBase: false };
 
 async function post(url, body, headers = {}) {
@@ -76,15 +76,18 @@ async function loadCompare() {
     dataset: DATASET,
     extensions: { whatif: { scenario: state.scenario.id } },
     query: {
-      group_by: ["desk"],
-      measures: [{ name: "market_value", fn: "sum", of: "price * quantity" }],
-      sort: [{ by: "market_value__delta", desc: true }],
+      filter: "quantity > 0",
+      derive: [{ name: "mv", expr: "round(price * quantity * fx_rate, 2)" }],
+      group_by: ["sector"],
+      measures: [{ name: "mv", fn: "sum", of: "mv" }],
+      post: [{ name: "weight_pct", expr: "round(100 * mv / total(mv), 2)" }],
+      sort: [{ by: "mv__delta" }],
     },
   });
   const fmt = (v, d = 2) => v === null ? "–" : Number(v).toLocaleString(undefined, { maximumFractionDigits: d });
-  table.innerHTML = "<tr><th>desk</th><th>market value</th><th>base</th><th>delta</th><th>%</th></tr>" +
-    result.rows.map(r => `<tr><td>${r.desk}</td><td>${fmt(r.market_value)}</td><td>${fmt(r.market_value__base)}</td>` +
-      `<td>${fmt(r.market_value__delta)}</td><td>${fmt(r.market_value__pct, 3)}</td></tr>`).join("");
+  table.innerHTML = "<tr><th>sector</th><th>fund value (USD)</th><th>base</th><th>change</th><th>%</th><th>weight %</th><th>base weight %</th></tr>" +
+    result.rows.map(r => `<tr><td>${r.sector}</td><td>${fmt(r.mv)}</td><td>${fmt(r.mv__base)}</td>` +
+      `<td>${fmt(r.mv__delta)}</td><td>${fmt(r.mv__pct, 3)}</td><td>${fmt(r.weight_pct)}</td><td>${fmt(r.weight_pct__base)}</td></tr>`).join("");
 }
 
 const datasource = {
@@ -123,13 +126,15 @@ const gridOptions = {
   rowModelType: "serverSide",
   cacheBlockSize: 100,
   columnDefs: [
-    { field: "desk", rowGroup: true, hide: true, enableRowGroup: true, enablePivot: true, filter: "agSetColumnFilter", filterParams: { values: distinct("desk") } },
+    { field: "asset_class", rowGroup: true, hide: true, enableRowGroup: true, enablePivot: true, filter: "agSetColumnFilter", filterParams: { values: distinct("asset_class") } },
     { field: "sector", enableRowGroup: true, enablePivot: true, filter: "agSetColumnFilter", filterParams: { values: distinct("sector") } },
     { field: "region", enableRowGroup: true, enablePivot: true, filter: "agSetColumnFilter", filterParams: { values: distinct("region") } },
+    { field: "currency", enableRowGroup: true, enablePivot: true, filter: "agSetColumnFilter", filterParams: { values: distinct("currency") } },
+    { field: "security", filter: "agTextColumnFilter" },
     { field: "rating", enableRowGroup: true, enablePivot: true, editable: true, filter: "agTextColumnFilter" },
-    { field: "position_id", filter: "agNumberColumnFilter" },
     { field: "price", aggFunc: "avg", enableValue: true, editable: true, filter: "agNumberColumnFilter" },
     { field: "quantity", aggFunc: "sum", enableValue: true, editable: true, filter: "agNumberColumnFilter" },
+    { field: "bench_quantity", headerName: "Benchmark qty", aggFunc: "sum", enableValue: true, filter: "agNumberColumnFilter" },
     { field: "yield", aggFunc: "avg", enableValue: true, editable: true, filter: "agNumberColumnFilter" },
   ],
   defaultColDef: { flex: 1, minWidth: 110, sortable: true },
@@ -157,7 +162,7 @@ document.getElementById("shock").onclick = async () => {
   try {
     if (!state.scenario) await newScenario();
     state.scenario = await post(`/calc/scenarios/${state.scenario.id}/steps`, {
-      steps: [{ kind: "shock", column: "price", op: "pct", value: 5, where: "sector == 'Tech'" }],
+      steps: [{ kind: "shock", column: "price", op: "pct", value: -10, where: "sector == 'Information Technology' and asset_class == 'Equity'" }],
       expected_version: state.scenario.version,
     });
     refresh();

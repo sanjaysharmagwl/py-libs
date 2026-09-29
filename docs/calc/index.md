@@ -1,8 +1,8 @@
 # pylibs-calc
 
-**An embeddable calculation engine for the grids that finance teams slice, edit and aggregate, extensible with plugins such as what-if analysis.**
+**An embeddable calculation engine for the portfolio grids that fund managers and research analysts slice, edit and aggregate, extensible with plugins such as what-if analysis.**
 
-You give it a table, such as positions, trades or exposures. It answers questions like *"What is each desk's exposure if Tech rallies 5%?"*:
+It is built for the investment teams of an active asset manager: **portfolio managers**, **equity and credit analysts**, and the investment risk, compliance and client reporting teams around them. You give it a table, such as a fund's holdings next to its benchmark. It answers questions like *"What happens to the fund's active weight in tech if tech stocks fall 10%?"*:
 
 - with exact decimal arithmetic
 - with results you can reproduce and audit
@@ -12,13 +12,13 @@ It is a Python **library** built on [Polars](https://pola.rs). You embed it in y
 
 <div class="grid cards" markdown>
 
--   :material-book-open-variant: **New to finance?**
+-   :material-book-open-variant: **New to investing?**
 
     ---
 
-    Positions, desks, notional, shocks, basis points and P&L impact, explained from scratch.
+    Holdings, NAV, weights, benchmarks, active weights, shocks and basis points, explained from scratch.
 
-    [:octicons-arrow-right-24: Finance primer](getting-started/finance-primer.md)
+    [:octicons-arrow-right-24: Investment primer](getting-started/finance-primer.md)
 
 -   :material-rocket-launch-outline: **New here?**
 
@@ -28,7 +28,7 @@ It is a Python **library** built on [Polars](https://pola.rs). You embed it in y
 
     [:octicons-arrow-right-24: Quick start](getting-started/quickstart.md)
 
--   :material-briefcase-outline: **Business user or QA?**
+-   :material-briefcase-outline: **PM, analyst or QA?**
 
     ---
 
@@ -40,7 +40,7 @@ It is a Python **library** built on [Polars](https://pola.rs). You embed it in y
 
     ---
 
-    Each feature has a page with a finance scenario, a runnable request and its real output.
+    Each feature has a page with a PM's or analyst's question, a runnable request and its real output.
 
     [:octicons-arrow-right-24: Scenarios by feature](scenarios/index.md)
 
@@ -60,9 +60,10 @@ It is a Python **library** built on [Polars](https://pola.rs). You embed it in y
 | --- | --- | --- |
 | Rows | Filters and derived columns | [Filter and derive](scenarios/filter-derive.md) |
 | Aggregation | Group-by, filtered and weighted measures, ratios of sums, subtotals, pivots | [Measures](scenarios/measures.md), [Rollup](scenarios/rollup.md), [Pivot](scenarios/pivot.md) |
-| Comparison | The same query on two sides, with deltas and percentage changes | [Compare](scenarios/compare.md) |
+| Weights | Portfolio weights, benchmark weights and active weights with `total()`, correct at every subtotal | [Weights and active weights](scenarios/weights.md) |
+| Comparison | The same query on two sides (base and scenario), with deltas and percentage changes, for the fund and its benchmark at once | [Compare](scenarios/compare.md) |
 | Extensibility | Plugins add functions, aggregates, dataset transforms, operations and HTTP routes | [Plugins](concepts/plugins.md), [Write a plugin](extending/write-a-plugin.md) |
-| What-if (plugin) | Cell overrides, bulk shocks (`price +5% where sector == 'Tech'`), formula columns | [Override](scenarios/override.md), [Shock](scenarios/shock.md) |
+| What-if (plugin) | Cell overrides, bulk shocks (`price −10% where sector == 'Information Technology'`, the dollar +5%), formula columns | [Override](scenarios/override.md), [Shock](scenarios/shock.md) |
 | Scenarios (plugin) | Saved, versioned, forkable what-ifs with an audit trail | [Saved scenarios](scenarios/saved-scenarios.md) |
 | Exact numbers | Decimal arithmetic with explicit scales and half-to-even rounding | [Numbers, types and nulls](concepts/numbers-types-nulls.md) |
 | Verifiability | A fingerprint on every result, `explain`, and an independent reference evaluator | [Audit a number](scenarios/audit.md) |
@@ -74,15 +75,26 @@ It is a Python **library** built on [Polars](https://pola.rs). You embed it in y
 from book import engine, table
 
 result = engine().run({
-    "dataset": "positions",
-    "extensions": {"whatif": {"steps": [{"kind": "shock", "column": "price", "op": "pct", "value": 5, "where": "sector == 'Tech'"}]}},
+    "dataset": "holdings",
+    "extensions": {"whatif": {"steps": [
+        {"kind": "shock", "column": "price", "op": "pct", "value": -10,
+         "where": "sector == 'Information Technology' and asset_class == 'Equity'"},
+    ]}},
     "query": {
-        "group_by": ["desk"],
-        "measures": [
-            {"name": "notional", "fn": "sum", "of": "price * quantity"},
-            {"name": "yield", "fn": "wavg", "of": "yield", "weight": "abs(float(price * quantity))"},
+        "derive": [
+            {"name": "fund", "expr": "round(price * quantity * fx_rate, 2)"},
+            {"name": "bench", "expr": "round(price * bench_quantity * fx_rate, 2)"},
         ],
-        "sort": [{"by": "desk"}],
+        "group_by": ["sector"],
+        "measures": [
+            {"name": "fund", "fn": "sum", "of": "fund"},
+            {"name": "bench", "fn": "sum", "of": "bench"},
+        ],
+        "post": [
+            {"name": "weight_pct", "expr": "round(100 * fund / total(fund), 2)"},
+            {"name": "active_pct", "expr": "round(100 * (fund / total(fund) - bench / total(bench)), 2)"},
+        ],
+        "sort": [{"by": "active_pct"}],
     },
 })
 print(table(result))

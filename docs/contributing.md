@@ -30,12 +30,12 @@ docs/
   calc/
     getting-started/             tutorials: install, quick start, demo, curl
     concepts/                    explanation: architecture, evaluation order, numbers, formulas
-    scenarios/                   one page per feature, each with a runnable finance example
+    scenarios/                   one page per feature, each with a runnable fund example
     integrations/ operations/ qa/
     reference/                   API (mkdocstrings), request schema, error codes
     reference/generated/         written by scripts/docs_from_graph.py; never edit by hand
   examples/calc/
-    book.py                      the twelve-position example book and table/curl helpers
+    book.py                      the example fund (vs its benchmark) and table/curl helpers
     NN_<feature>.py              one runnable script per scenario page
     golden.py, golden_cases.json the QA golden cases
     test_examples.py             runs all of the above under pytest
@@ -58,7 +58,7 @@ scripts/docs_from_graph.py       the graph → docs sync
     # Feature name
 
     !!! question "The business question"
-        *"The question a trader or analyst would actually ask."*
+        *"The question a portfolio manager or analyst would actually ask."*
 
     One paragraph: what the feature does.
 
@@ -115,7 +115,8 @@ The check is deliberately **advisory**. CI fails only when the *generated* pages
 
 ## Style
 
-- **Lead with the business question**, and use the example book, so readers can compare pages.
+- **Lead with the business question**, and use the example fund, so readers can compare pages. The readers are portfolio managers, research analysts and the teams around them (investment risk, compliance, client reporting), so use their words: holdings, weights, benchmark, active weight. The [Investment primer](calc/getting-started/finance-primer.md) sets the vocabulary.
+- **Use made-up names** for firms, funds, securities and indices. Never name a real asset manager or index provider.
 - **Show real output.** Never paste a result table by hand; run the example.
 - **Keep sentences short**, and use plain words. Many readers aren't Python developers.
 - **Put the details that bite** (nulls, rounding, limits) under *Gotchas*.

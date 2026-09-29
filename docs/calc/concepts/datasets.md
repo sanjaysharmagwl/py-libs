@@ -6,7 +6,7 @@ covers:
 
 # Datasets and the catalog
 
-A **dataset** is a table the engine calculates over, such as a book of positions or a set of trades. You register datasets in a `Catalog`, and every registration is an immutable **version**.
+A **dataset** is a table the engine calculates over, such as a fund's holdings next to its benchmark, or the constituents of an index. You register datasets in a `Catalog`, and every registration is an immutable **version**.
 
 ## Registering data
 
@@ -17,11 +17,11 @@ A **dataset** is a table the engine calculates over, such as a book of positions
 
     catalog = Catalog()
     catalog.register_frame(
-        "positions",
+        "holdings",
         df,  # a polars DataFrame
-        key_columns=["position_id"],  # unique, non-null: identifies a row
+        key_columns=["security_id"],  # unique, non-null: identifies a row
         version="2026-09-30",  # default: a hash of the contents
-        editable=["price", "quantity"],  # default: every non-key column
+        editable=["price", "fx_rate", "quantity"],  # default: every non-key column
     )
     ```
 
@@ -29,10 +29,10 @@ A **dataset** is a table the engine calculates over, such as a book of positions
 
     ```python
     catalog.register_scan(
-        "trades",
-        "s3://risk/trades/2026-09-30/*.parquet",
+        "holdings_all_funds",
+        "s3://portfolio-data/holdings/2026-09-30/*.parquet",
         format="parquet",
-        key_columns=["trade_id"],
+        key_columns=["fund_id", "security_id"],
         version="snapshot-8812",  # required for remote files, e.g. an ETag
         storage_options={"aws_region": "eu-west-1"},
     )
@@ -48,7 +48,7 @@ Scanned files are never loaded as a whole. Polars' streaming engine reads them, 
     - enums become `String`, while categoricals stay categorical
 - **Cleans floats.** NaN and ±infinity become null, so every calculation sees SQL-style nulls.
 - **Checks the keys.** Key columns must have no nulls and no duplicates. `register_scan` checks them only with `validate_keys=True`.
-- **Builds the schema** (a `DatasetSchema` of `ColumnMeta` entries). Each column gets a role (`key`, `dimension` or `measure`) and an editable flag. A UI reads it with `engine.schema("positions")` or `GET /calc/datasets/positions/schema`.
+- **Builds the schema** (a `DatasetSchema` of `ColumnMeta` entries). Each column gets a role (`key`, `dimension` or `measure`) and an editable flag. A UI reads it with `engine.schema("holdings")` or `GET /calc/datasets/holdings/schema`.
 
 ## Versions
 
@@ -56,7 +56,7 @@ Scanned files are never loaded as a whole. Polars' streaming engine reads them, 
 catalog = Catalog(max_versions=2)  # keep the two most recent versions of each dataset
 ```
 
-- A request uses the **latest** version unless it pins one: `{"dataset": {"id": "positions", "version": "2026-09-29"}}`.
+- A request uses the **latest** version unless it pins one: `{"dataset": {"id": "holdings", "version": "2026-09-29"}}`.
 - A [saved scenario](../scenarios/saved-scenarios.md) (what-if plugin) is pinned to the version it was created on, so it keeps working after the next refresh for as long as the catalog keeps that version.
 - Each result records the version it used, in `meta.dataset`.
 

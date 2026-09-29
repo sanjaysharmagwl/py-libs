@@ -7,9 +7,9 @@
 
     engine = CalcEngine(catalog, plugins=[WhatIfPlugin(store=InMemoryScenarioStore())])
     engine.run({
-        "dataset": "positions",
+        "dataset": "holdings",
         "extensions": {"whatif": {"steps": [{"kind": "shock", "column": "price", "op": "pct",
-                                             "value": 5}]}},
+                                             "value": -10}]}},
         "query": {"group_by": ["sector"], "measures": [...]},
     })
 

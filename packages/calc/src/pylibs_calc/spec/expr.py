@@ -37,6 +37,7 @@ FuncName = Literal[
     "contains",
     "starts_with",
     "ends_with",
+    "total",
 ]
 
 # Plugin function names: lower-case identifiers, never starting with an underscore.
@@ -59,6 +60,7 @@ FUNC_ARITY: dict[str, tuple[int, int | None]] = {
     "contains": (2, 2),
     "starts_with": (2, 2),
     "ends_with": (2, 2),
+    "total": (1, 1),
 }
 
 

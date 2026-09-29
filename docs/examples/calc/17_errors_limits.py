@@ -13,26 +13,30 @@ def row(label: str, err: CalcError) -> str:
 calc = engine()
 BAD_REQUESTS = {
     "a typo in a column name": {
-        "dataset": "positions",
-        "query": {"group_by": ["desk"], "measures": [{"name": "n", "fn": "sum", "of": "notionl"}]},
+        "dataset": "holdings",
+        "query": {"group_by": ["sector"], "measures": [{"name": "q", "fn": "sum", "of": "qty"}]},
     },
     "mixing a float and a decimal": {
-        "dataset": "positions",
+        "dataset": "holdings",
         "query": {"derive": [{"name": "x", "expr": "price * yield"}]},
     },
     "a formula that doesn't parse": {
-        "dataset": "positions",
+        "dataset": "holdings",
         "query": {"filter": "price >"},
+    },
+    "total() outside post or having": {
+        "dataset": "holdings",
+        "query": {"derive": [{"name": "w", "expr": "quantity / total(quantity)"}]},
     },
     "an unknown dataset": {"dataset": "trades"},
     "an override of a key that doesn't exist": {
-        "dataset": "positions",
+        "dataset": "holdings",
         "extensions": {
             "whatif": {
                 "steps": [
                     {
                         "kind": "override",
-                        "edits": [{"key": {"position_id": 99}, "column": "price", "value": 1}],
+                        "edits": [{"key": {"security_id": 99}, "column": "price", "value": 1}],
                     }
                 ]
             }
@@ -51,6 +55,6 @@ for label, request in BAD_REQUESTS.items():
 # A host can tighten the limits: here, at most 5 rows per page.
 strict = CalcEngine(calc.catalog, config=EngineConfig(limits=Limits(max_page_size=5)))
 try:
-    strict.run({"dataset": "positions", "query": {"page": {"limit": 50}}})
+    strict.run({"dataset": "holdings", "query": {"page": {"limit": 50}}})
 except CalcError as err:
     print(row("a page larger than `max_page_size`", err))

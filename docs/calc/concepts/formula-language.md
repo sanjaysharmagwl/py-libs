@@ -15,16 +15,17 @@ Wherever a request takes an expression (in `filter`, `derive`, `of`, `weight`, `
 | Column | a plain name | `price`, `yield` (keywords work too) |
 | Column with any name | `col('...')` | `col('Market Value')` |
 | Number | digits | `1.05` is an **exact decimal**, `100` an integer |
-| String | quotes | `'EMEA'` |
+| String | quotes | `'Information Technology'` |
 | Boolean, null | | `True`, `False`, `None` |
 | Date, timestamp | | `date('2026-01-31')`, `datetime('2026-01-31T12:00:00')` |
 | Arithmetic | `+ - * / **` | `price * quantity` |
 | Comparison | `== != < <= > >=`, and chains | `0 < yield <= 0.05` |
-| Logic | `and or not` | `region == 'EMEA' and not quantity < 0` |
-| Membership | `in`, `not in` | `desk in ('Rates', 'Credit')` |
+| Logic | `and or not` | `asset_class == 'Equity' and not currency == 'USD'` |
+| Membership | `in`, `not in` | `currency in ('EUR', 'GBP')` |
 | Null test | `is None`, `is not None` | `yield is not None` |
-| Conditional | `a if cond else b` | `'long' if quantity > 0 else 'short'` |
+| Conditional | `a if cond else b` | `'held' if quantity > 0 else 'benchmark only'` |
 | Cast | `int() float() str() decimal(x, scale) to_date()` | `decimal(yield, 6)` |
+| Share of the whole | `total(measure)`, in `post` and `having` only | `mv / total(mv)` |
 
 ## Functions
 
@@ -46,6 +47,7 @@ for name, (lo, hi) in FUNC_ARITY.items():
 - `round(x, n)` rounds half-to-even.
 - `min` and `max` compare their arguments across a row. They are not aggregates; for those, use a [measure](../scenarios/measures.md).
 - `coalesce(a, b, …)` returns the first non-null argument.
+- `total(m)` is the measure `m` over every row the query sees, for [weights and shares](../scenarios/weights.md). It takes a measure name and is allowed only in `post` and `having`; anywhere else it is a `422 invalid_total`.
 - `contains`, `starts_with` and `ends_with` test strings.
 - Plugins can add functions (see [`FunctionDef`](plugins.md#functions-and-aggregates)); they are available in every formula of an engine that has the plugin. A name that neither a built-in nor an installed plugin provides is a `422 unknown_function` when the request is checked.
 
@@ -56,7 +58,7 @@ A formula is parsed into an **expression tree**, which is what gets stored, fing
 ```python exec="on" source="tabbed-left" tabs="Python|Output"
 from pylibs_calc import parse_formula, to_formula
 
-tree = parse_formula("0 < yield <= 0.05 and desk in ('Rates', 'Credit')")
+tree = parse_formula("0 < yield <= 0.05 and currency in ('EUR', 'GBP')")
 print("```json")
 print(tree.model_dump_json(indent=2)[:600] + "\n  ...")
 print("```")

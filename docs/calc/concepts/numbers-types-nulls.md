@@ -7,21 +7,21 @@ covers:
 
 # Numbers, types and nulls
 
-Finance numbers have to be right to the cent and reproducible. `pylibs-calc` makes every numeric rule explicit, and the validator, the Polars compiler and the reference evaluator all use the same rules.
+Fund valuations, weights and client reports have to be right to the cent and reproducible. `pylibs-calc` makes every numeric rule explicit, and the validator, the Polars compiler and the reference evaluator all use the same rules.
 
 ## Exact decimals
 
 A `Decimal` column (such as `price`, with 2 places) is computed **exactly**. The result has a defined scale, and it is rounded **half-to-even** (banker's rounding). Precision is always 38 digits.
 
-| Operation | Result scale | Example with `price` (2) and a 4-place rate |
+| Operation | Result scale | Example with `price` (2) and `fx_rate` (6) |
 | --- | --- | --- |
-| `+`, `-` | `max(sa, sb)` | 2 and 4 → 4 |
-| `*` | `sa + sb`, capped at `NumericConfig.max_scale` (18) | 2 and 4 → 6 |
+| `+`, `-` | `max(sa, sb)` | 2 and 6 → 6 |
+| `*` | `sa + sb`, capped at `NumericConfig.max_scale` (18) | 2 and 6 → 8 |
 | `/` | `max(division_scale, sa, sb)`; `division_scale` defaults to 10 | → 10 |
 
 Integers count as scale 0. `int / int` gives an **exact decimal** at `division_scale`, not a truncated integer: `7 / 2` is `3.5000000000`.
 
-Here are the types the engine infers for a few formulas over the example book:
+Here are the types the engine infers for a few formulas over the example fund:
 
 ```python exec="on"
 from book import engine
@@ -29,6 +29,8 @@ from book import engine
 calc = engine()
 formulas = [
     "price * quantity",
+    "price * quantity * fx_rate",
+    "round(price * quantity * fx_rate, 2)",
     "price + 0.125",
     "price / quantity",
     "quantity / 3",
@@ -38,7 +40,7 @@ formulas = [
     "decimal(yield, 4)",
 ]
 derive = [{"name": f"f{i}", "expr": f} for i, f in enumerate(formulas)]
-plan = calc.explain({"dataset": "positions", "query": {"derive": derive, "page": {"limit": 1}}})
+plan = calc.explain({"dataset": "holdings", "query": {"derive": derive, "page": {"limit": 1}}})
 print("| Formula | Result type |\n| --- | --- |")
 for i, f in enumerate(formulas):
     print(f"| `{f}` | `{plan['columns'][f'f{i}']}` |")
@@ -59,7 +61,7 @@ This rule stops an accidental float from contaminating a number that must be exa
 ## Nulls follow SQL
 
 - **Arithmetic** with null gives null: `price * quantity` is null if either is null.
-- **Comparisons** with null give null. `yield > 0.03` is null for an equity.
+- **Comparisons** with null give null. `yield > 0.03` is null for an equity, which has no yield.
 - **A null condition counts as false** in `filter`, a measure's `where`, a shock's `where` and `if`.
 - **`and` and `or` use three-valued logic**: `null and false` is false, and `null or true` is true.
 - **Aggregates skip nulls.** `sum` of only nulls is null, `count` counts non-nulls, and `count_rows` counts rows.

@@ -1,21 +1,8 @@
-"""Having: holdings over a 10% concentration limit, and sectors more than 5 points off benchmark."""
+"""Weights: the fund's weight, the benchmark's weight and the active weight in each sector."""
 
 from book import engine, table
 
 REQUEST = {
-    "dataset": "holdings",
-    "query": {
-        "filter": "quantity > 0",
-        "derive": [{"name": "mv", "expr": "round(price * quantity * fx_rate, 2)"}],
-        "group_by": ["security"],
-        "measures": [{"name": "mv", "fn": "sum", "of": "mv"}],
-        "post": [{"name": "weight_pct", "expr": "round(100 * mv / total(mv), 2)"}],
-        "having": "weight_pct > 10",
-        "sort": [{"by": "weight_pct", "desc": True}],
-    },
-}
-
-ACTIVE_REQUEST = {
     "dataset": "holdings",
     "query": {
         "derive": [
@@ -32,11 +19,9 @@ ACTIVE_REQUEST = {
             {"name": "bench_pct", "expr": "round(100 * bench / total(bench), 2)"},
             {"name": "active_pct", "expr": "fund_pct - bench_pct"},
         ],
-        "having": "abs(active_pct) > 5",
-        "sort": [{"by": "active_pct"}],
+        "sort": [{"by": "active_pct", "desc": True}],
     },
 }
 
-calc = engine()
-print(table(calc.run(REQUEST)))
-print(table(calc.run(ACTIVE_REQUEST)))
+result = engine().run(REQUEST)
+print(table(result))

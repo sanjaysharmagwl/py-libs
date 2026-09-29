@@ -8,7 +8,7 @@ covers:
 
 ## Benchmarks
 
-These were measured with [`packages/calc/benchmarks/bench.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/benchmarks/bench.py) on **10 million positions**, with `POLARS_MAX_THREADS=4`, on an Apple M1. Times are p50 / p95 in milliseconds.
+These were measured with [`packages/calc/benchmarks/bench.py`](https://github.com/sanjaysharmagwl/py-libs/blob/master/packages/calc/benchmarks/bench.py) on **10 million rows** (think of holdings across hundreds of funds), with `POLARS_MAX_THREADS=4`, on an Apple M1. Times are p50 / p95 in milliseconds.
 
 | Request | String dimensions | Categorical dimensions |
 | --- | --- | --- |
@@ -28,7 +28,7 @@ uv run python packages/calc/benchmarks/bench.py
 ## Guidance
 
 - **Store dimensions as Categorical.** Grouping is about twice as fast, and the catalog keeps categoricals as they are.
-- **Use Decimal only where exactness matters.** Decimal sums and products cost 2–7× their float equivalents. Prices and notionals usually deserve it; yields and risk sensitivities usually don't.
+- **Use Decimal only where exactness matters.** Decimal sums and products cost 2–7× their float equivalents. Prices, FX rates and market values usually deserve it; yields, durations and risk sensitivities usually don't.
 - **Paging is cheap after the first request.** Aggregates are cached by content hash (`EngineConfig.cache_bytes`, 256 MiB by default), and later pages are sliced from the cache.
 - **Row views push sorting and slicing into Polars**, so one page of a huge table never builds the whole table.
 - **Scenarios only rewrite the columns they change**, and store changes rather than copies of the data.

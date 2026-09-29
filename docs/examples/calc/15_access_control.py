@@ -1,24 +1,27 @@
-"""Access control: a Rates trader sees only Rates rows and no yields."""
+"""Access control: an analyst sees only their coverage; client reporting never sees targets."""
 
 from book import engine, table
 
 from pylibs_calc import CalcContext
 
 REQUEST = {
-    "dataset": "positions",
+    "dataset": "holdings",
     "query": {
-        "select": ["position_id", "desk", "price", "quantity"],
-        "sort": [{"by": "position_id"}],
+        "select": ["security_id", "security", "sector", "price", "target_price"],
+        "sort": [{"by": "security_id"}],
     },
 }
 
-rates_trader = CalcContext(
-    principal="raj",
-    row_filter="desk == 'Rates'",
-    allowed_columns=frozenset({"desk", "instrument", "price", "quantity"}),
-)
+credit_analyst = CalcContext(principal="raj", row_filter="analyst == 'raj'")
+client_reporting = CalcContext(
+    principal="cr-team",
+    allowed_columns=frozenset(
+        {"security_id", "security", "asset_class", "sector", "country", "region", "currency",
+         "price", "fx_rate", "quantity", "bench_quantity", "rating", "yield", "duration"}
+    ),
+)  # fmt: skip
 calc = engine()
-print(table(calc.run(REQUEST, rates_trader)))
+print(table(calc.run(REQUEST, credit_analyst)))
 
-visible = [c.name for c in calc.schema("positions", ctx=rates_trader).columns]
-print(f"Columns this trader can see: `{visible}`")
+visible = [c.name for c in calc.schema("holdings", ctx=client_reporting).columns]
+print(f"Columns client reporting can see: `{visible}`")

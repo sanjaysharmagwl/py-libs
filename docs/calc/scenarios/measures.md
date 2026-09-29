@@ -8,8 +8,8 @@ covers:
 # Measures
 
 !!! question "The business question"
-    *"For each desk: what is the net notional, how many positions are there, and what is the
-    exposure-weighted yield?"*
+    *"For each asset class: what is it worth, how many holdings and countries are there, and what
+    are its average yield, its value-weighted yield and its longest duration?"*
 
 `group_by` splits the rows into groups, and each **measure** aggregates one value per group.
 
@@ -53,12 +53,12 @@ Plugins can add more `fn`s, such as a median or a VaR quantile (see [`AggregateD
 
 ## What to notice
 
-- **Equities, FX and Commodities** have no yields, so `with_yield` is 0 and `wavg_yield` is null. There is no fake zero.
-- **`wavg_yield`** for Credit weights each bond's yield by the absolute size of its position. `float(notional)` converts the exact decimal to a float, because `yield` is a float (see [Numbers, types and nulls](../concepts/numbers-types-nulls.md)).
-- **`avg_price`** is a decimal at the division scale (10 places by default).
-- **Without `group_by`**, measures give one row for the whole book.
+- **Equities and cash** have no yields, so `with_yield` is 0 and `avg_yield`, `wavg_yield` and `max_duration` are null. There is no fake zero.
+- **`avg_yield` and `wavg_yield` differ.** The simple mean counts every bond once. `wavg` weights each bond's yield by its market value, which is the number a PM means by "the yield of the bond book". `float(mv)` converts the exact decimal to a float, because `yield` is a float (see [Numbers, types and nulls](../concepts/numbers-types-nulls.md)).
+- **`countries`** counts distinct values: the six equities come from four countries.
+- **Without `group_by`**, measures give one row for the whole fund.
 
 ## Gotchas
 
 - `sum` over only nulls is **null**, not 0. Wrap it, `coalesce(...)`, in a `post` expression if you want a 0.
-- An average of averages is wrong. For ratios such as the average price, use [Ratios after aggregation](post-ratios.md), which are always computed from sums.
+- An average of averages is wrong. For ratios such as upside to target, use [Ratios after aggregation](post-ratios.md), which are always computed from sums. For a holding's share of the fund, use [weights](weights.md).

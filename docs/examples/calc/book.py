@@ -1,11 +1,19 @@
-"""The book of positions every documentation example runs against.
+"""The fund every documentation example runs against.
 
-Twelve positions across five desks, with the same columns as the demo service in
-``packages/calc_whatif/examples/app.py``, so the JSON requests in the docs also work against the
-demo with curl (the numbers differ, because the demo generates 200,000 rows).
+A fictional multi-asset "Global Income Fund" (base currency USD) and its benchmark, a notional
+60/40 blend of global equities and government bonds, in one dataset of fourteen securities.
+``quantity`` is what the fund holds; ``bench_quantity`` is what the benchmark would hold if it
+were a portfolio of about the same size. A security the fund doesn't own has ``quantity`` 0 (an
+underweight); one outside the benchmark has ``bench_quantity`` 0 (an off-benchmark position).
 
-Negative quantities are short positions. ``yield`` is null where it doesn't apply (equities and
-FX). ``price`` is an exact decimal, as a mark would be in a risk system.
+Prices are in the security's own currency: per share for equities, per 100 of face value for
+bonds (so bond quantities count 100s of face value), and 1.00 for cash. ``fx_rate`` turns one unit
+of that currency into US dollars, so ``price * quantity * fx_rate`` is the market value in USD.
+Only bonds have a ``rating``, ``yield`` and ``duration``; only equities have an analyst
+``target_price``. Prices and rates are exact decimals, as they would be in a portfolio system.
+
+The demo service in ``packages/calc_whatif/examples/app.py`` generates a large book with the same
+columns, so the JSON requests in the docs also work against it with curl (with other numbers).
 """
 
 from __future__ import annotations
@@ -24,113 +32,79 @@ from pylibs_calc_whatif import InMemoryScenarioStore, WhatIfPlugin
 HERE = Path(__file__).resolve().parent
 DATASET_VERSION = "2026-09-30"
 
+# The editable columns: what an override or a shock may change.
+EDITABLE = ["price", "fx_rate", "quantity", "yield", "rating", "target_price"]
 
-def positions() -> pl.DataFrame:
-    d = Decimal
+USD, EUR, GBP, JPY = "1.000000", "1.090000", "1.270000", "0.006700"
+
+# security, asset class, sector, country, region, currency, fx, rating, price, quantity,
+# bench_quantity, yield, duration, analyst, target price
+_ROWS: list[tuple[Any, ...]] = [
+    ("UST 4.25% 2034", "Fixed Income", "Government", "United States", "North America", "USD", USD,
+     "AAA", "98.50", 18000, 16000, 0.0425, 7.9, None, None),
+    ("Bund 2.5% 2033", "Fixed Income", "Government", "Germany", "Europe ex UK", "EUR", EUR,
+     "AAA", "101.20", 8000, 9000, 0.025, 7.4, None, None),
+    ("Gilt 4.0% 2031", "Fixed Income", "Government", "United Kingdom", "UK", "GBP", GBP,
+     "AA", "99.10", 6000, 3000, 0.04, 5.2, None, None),
+    ("JGB 0.9% 2032", "Fixed Income", "Government", "Japan", "Japan", "JPY", JPY,
+     "A", "99.80", 0, 1350000, 0.009, 7.6, None, None),
+    ("ACME Corp 5.1% 2030", "Fixed Income", "Information Technology", "United States",
+     "North America", "USD", USD, "BBB", "97.25", 6000, 0, 0.051, 3.8, "raj", None),
+    ("Globex 6.0% 2029", "Fixed Income", "Energy", "United Kingdom", "UK", "GBP", GBP,
+     "BB", "88.40", 4000, 0, 0.062, 2.9, "raj", None),
+    ("Umbrella Health", "Equity", "Health Care", "United States", "North America", "USD", USD,
+     None, "45.60", 20000, 15000, None, None, "ana", "52.00"),
+    ("Stark Industries", "Equity", "Industrials", "United States", "North America", "USD", USD,
+     None, "312.75", 2500, 2000, None, None, "ana", "340.00"),
+    ("Wayne Financial", "Equity", "Financials", "United Kingdom", "UK", "GBP", GBP,
+     None, "58.10", 15000, 8000, None, None, "ana", "55.00"),
+    ("Kaiju Motors", "Equity", "Consumer Discretionary", "Japan", "Japan", "JPY", JPY,
+     None, "2450.00", 40000, 30000, None, None, "ana", "2900.00"),
+    ("Nordwind Energie", "Equity", "Energy", "Germany", "Europe ex UK", "EUR", EUR,
+     None, "38.20", 12000, 10000, None, None, "ana", "44.00"),
+    ("Cyberdyne Systems", "Equity", "Information Technology", "United States", "North America",
+     "USD", USD, None, "185.40", 5000, 8000, None, None, "ana", "210.00"),
+    ("Initech", "Equity", "Information Technology", "United States", "North America", "USD", USD,
+     None, "64.30", 0, 23000, None, None, "ana", "70.00"),
+    ("USD Cash", "Cash", "Cash", "United States", "North America", "USD", USD,
+     None, "1.00", 300000, 0, None, None, None, None),
+]  # fmt: skip
+
+_COLUMNS = [
+    "security", "asset_class", "sector", "country", "region", "currency", "fx_rate", "rating",
+    "price", "quantity", "bench_quantity", "yield", "duration", "analyst", "target_price",
+]  # fmt: skip
+
+
+def holdings() -> pl.DataFrame:
+    """The fourteen securities, keyed by ``security_id``."""
+    data: dict[str, list[Any]] = {"security_id": list(range(1, len(_ROWS) + 1))}
+    for i, name in enumerate(_COLUMNS):
+        data[name] = [row[i] for row in _ROWS]
+    for name in ("price", "fx_rate", "target_price"):
+        data[name] = [None if v is None else Decimal(v) for v in data[name]]
     return pl.DataFrame(
-        {
-            "position_id": list(range(1, 13)),
-            "instrument": [
-                "UST 4.25% 2034",
-                "Bund 2.5% 2033",
-                "JGB 0.9% 2032",
-                "ACME Corp 5.1% 2030",
-                "Globex 6.0% 2029",
-                "Initech 4.8% 2031",
-                "Umbrella Health",
-                "Stark Industries",
-                "Wayne Financial",
-                "EUR/USD fwd",
-                "USD/JPY fwd",
-                "Brent Dec-26",
-            ],
-            "desk": [
-                "Rates",
-                "Rates",
-                "Rates",
-                "Credit",
-                "Credit",
-                "Credit",
-                "Equities",
-                "Equities",
-                "Equities",
-                "FX",
-                "FX",
-                "Commodities",
-            ],
-            "sector": [
-                "Financials",
-                "Financials",
-                "Financials",
-                "Tech",
-                "Energy",
-                "Tech",
-                "Health",
-                "Industrials",
-                "Financials",
-                "Financials",
-                "Financials",
-                "Energy",
-            ],
-            "region": [
-                "AMER",
-                "EMEA",
-                "APAC",
-                "AMER",
-                "EMEA",
-                "AMER",
-                "AMER",
-                "AMER",
-                "EMEA",
-                "EMEA",
-                "APAC",
-                "EMEA",
-            ],
-            "rating": ["AAA", "AAA", "A", "BBB", "BB", "BBB", "A", "AA", "A", "AA", "A", None],
-            "price": [
-                d("98.50"),
-                d("101.20"),
-                d("99.80"),
-                d("97.25"),
-                d("88.40"),
-                d("102.10"),
-                d("45.60"),
-                d("312.75"),
-                d("58.10"),
-                d("1.09"),
-                d("148.30"),
-                d("82.15"),
-            ],
-            "quantity": [1000, -500, 2000, 800, 1200, -300, 5000, 400, -2500, 100000, -50000, 150],
-            "yield": [
-                0.0425,
-                0.025,
-                0.009,
-                0.051,
-                0.062,
-                0.048,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-            ],
+        data,
+        schema_overrides={
+            "fx_rate": pl.Decimal(18, 6),
+            "price": pl.Decimal(18, 2),
+            "target_price": pl.Decimal(18, 2),
+            "quantity": pl.Int64,
+            "bench_quantity": pl.Int64,
         },
-        schema_overrides={"price": pl.Decimal(18, 2)},
     )
 
 
 def engine() -> CalcEngine:
-    """An engine with the book registered as ``positions`` and the what-if plugin installed,
+    """An engine with the fund registered as ``holdings`` and the what-if plugin installed,
     with an in-memory scenario store."""
     catalog = Catalog()
     catalog.register_frame(
-        "positions",
-        positions(),
-        key_columns=["position_id"],
+        "holdings",
+        holdings(),
+        key_columns=["security_id"],
         version=DATASET_VERSION,
-        editable=["price", "quantity", "yield", "rating"],
+        editable=EDITABLE,
     )
     return CalcEngine(catalog, plugins=[WhatIfPlugin(store=InMemoryScenarioStore())])
 
@@ -174,6 +148,8 @@ def _cell(value: Any) -> str:
     if value is None:
         return "*null*"
     if isinstance(value, float):
+        if abs(value) >= 100_000:  # money: no exponent, cents
+            return f"{value:.2f}"
         return f"{value + 0.0:.6g}"  # + 0.0 turns -0.0 into 0.0
     return _escape(str(value))
 
